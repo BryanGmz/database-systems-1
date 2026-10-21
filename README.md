@@ -16,11 +16,11 @@ Cada herramienta tiene pestañas con su propio enlace, por ejemplo `algebra/#div
 ## Estructura
 
 ```
-index.html              portada con las tarjetas de cada herramienta
-assets/css/curso.css    estilos compartidos (colores, tipografía, tablas)
-algebra/index.html      Álgebra relacional paso a paso
-normalization/index.html Normalización paso a paso
-.nojekyll               indica a GitHub Pages que publique los archivos tal cual
+index.html                portada con las tarjetas de cada herramienta
+assets/css/curso.css      estilos compartidos (colores, tipografía, tablas)
+algebra/index.html        Álgebra relacional paso a paso
+normalization/index.html  Normalización paso a paso
+.nojekyll                 indica a GitHub Pages que publique los archivos tal cual
 ```
 
 ## Cómo agregar una herramienta nueva
