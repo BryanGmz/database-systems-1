@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta
+      name="description"
+      content="Herramientas interactivas del curso Sistemas de Bases de Datos 1."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%226%22 fill=%22%232c8559%22/%3E%3Ctext x=%2216%22 y=%2222%22 font-size=%2216%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22monospace%22 font-weight=%22700%22%3EBD%3C/text%3E%3C/svg%3E"
+    />
+    <title>Sistemas de Bases de Datos 1</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=JetBrains+Mono:wght@400;700&family=Source+Sans+3:wght@400;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="assets/css/curso.css" />
+    <style>
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 14px;
+      }
+      a.tool {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        text-decoration: none;
+        color: var(--ink);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 18px;
+      }
+      a.tool:hover {
+        border-color: var(--accent);
+      }
+      a.tool .sym {
+        font: 700 22px var(--font-mono);
+        color: var(--accent);
+      }
+      a.tool .unit {
+        font: 12px var(--font-mono);
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      a.tool p {
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <span class="eyebrow"
+          >2817 · Sistemas de Bases de Datos 1 · CUNOC – USAC</span
+        >
+        <h1>Herramientas de práctica</h1>
+        <p class="lede">
+          Material interactivo de apoyo para el curso. Cada herramienta avanza
+          paso a paso con los mismos ejemplos vistos en clase.
+        </p>
+      </header>
+      <div class="cards">
+        <!-- Para agregar una herramienta nueva, copia uno de estos bloques <a class="tool"> y cambia la carpeta y el texto. -->
+        <a class="tool" href="algebra/">
+          <span class="unit">Unidad 8</span>
+          <span class="sym">σ π ⋈ ÷</span>
+          <h3>Álgebra relacional, paso a paso</h3>
+          <p>
+            Selección, proyección, reunión, división y composición, fila por
+            fila y con su SQL equivalente.
+          </p>
+        </a>
+        <a class="tool" href="normalization/">
+          <span class="unit">Unidad 9</span>
+          <span class="sym">1FN → FNBC</span>
+          <h3>Normalización, paso a paso</h3>
+          <p>
+            Dependencias funcionales, diagrama de dependencias, clasificación,
+            descomposición y verificación con la reunión.
+          </p>
+        </a>
+      </div>
+      <footer class="foot">
+        Ing. Bryan René Gómez Gómez · Datos de los ejemplos: ficticios.
+      </footer>
+    </div>
+  </body>
+</html>

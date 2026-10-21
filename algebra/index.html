@@ -1,0 +1,1450 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta
+      name="description"
+      content="Álgebra relacional paso a paso: selección, proyección, reunión, división y composición."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%226%22 fill=%22%232c8559%22/%3E%3Ctext x=%2216%22 y=%2222%22 font-size=%2216%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22monospace%22 font-weight=%22700%22%3EBD%3C/text%3E%3C/svg%3E"
+    />
+    <title>Álgebra Relacional Paso a Paso</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=JetBrains+Mono:wght@400;700&family=Source+Sans+3:wght@400;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="../assets/css/curso.css" />
+    <style>
+      .pipe {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: flex-start;
+      }
+      .pipe .arrow {
+        font-family: "STIX Two Math", "Cambria Math", serif;
+        font-size: 18px;
+        color: var(--violet);
+        padding-left: 14px;
+      }
+      .pipe .arrow sub {
+        font-size: 0.65em;
+        font-family: var(--font-body);
+      }
+      .errbox {
+        border: 1px solid var(--bad);
+        background: var(--bad-soft);
+        color: var(--ink);
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 15px;
+        max-width: 60ch;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <span class="eyebrow"
+          >2817 · Sistemas de Bases de Datos 1 · Unidad 8</span
+        >
+        <h1>Álgebra relacional, paso a paso</h1>
+        <p class="lede">
+          Elige un operador, arma la consulta y avanza fila por fila para ver
+          cómo se construye el resultado. Todos los ejemplos usan las tablas de
+          SIRECA vistas en clase.
+        </p>
+      </header>
+
+      <div>
+        <div class="tabs" role="tablist" aria-label="Operadores">
+          <button
+            class="tab"
+            role="tab"
+            id="tab-seleccion"
+            data-tab="seleccion"
+          >
+            <span class="sym">σ</span>Selección
+          </button>
+          <button
+            class="tab"
+            role="tab"
+            id="tab-proyeccion"
+            data-tab="proyeccion"
+          >
+            <span class="sym">π</span>Proyección
+          </button>
+          <button class="tab" role="tab" id="tab-reunion" data-tab="reunion">
+            <span class="sym">⋈</span>Reunión
+          </button>
+          <button class="tab" role="tab" id="tab-division" data-tab="division">
+            <span class="sym">÷</span>División
+          </button>
+          <button
+            class="tab"
+            role="tab"
+            id="tab-composicion"
+            data-tab="composicion"
+          >
+            <span class="sym">∘</span>Composición
+          </button>
+        </div>
+
+        <!-- SELECCIÓN -->
+        <section
+          class="sheet"
+          id="p-seleccion"
+          role="tabpanel"
+          aria-labelledby="tab-seleccion"
+        >
+          <div class="intro">
+            <h2>Selección σ: elegir filas</h2>
+            <p>
+              Recorre la relación tupla por tupla y conserva solo las que
+              cumplen la condición. El grado no cambia; la cardinalidad puede
+              bajar. En SQL corresponde al <code>WHERE</code>.
+            </p>
+          </div>
+          <div class="controls">
+            <span class="label">Ejemplos</span>
+            <div class="chips">
+              <button class="chip" data-sel-preset="1">
+                Carrera = 'Sistemas'
+              </button>
+              <button class="chip" data-sel-preset="2">
+                Sistemas ∧ Semestre ≥ 5
+              </button>
+              <button class="chip" data-sel-preset="3">
+                Sistemas ∨ Semestre ≥ 5
+              </button>
+              <button class="chip" data-sel-preset="4">Semestre ≠ 5</button>
+            </div>
+          </div>
+          <div class="controls">
+            <span class="label">Condición</span>
+            <div class="ctl-group" id="sel-c1"></div>
+            <label class="chk"
+              ><input type="checkbox" id="sel-two" /> segunda condición</label
+            >
+            <select id="sel-conn" aria-label="Conector">
+              <option value="and">∧ (y)</option>
+              <option value="or">∨ (o)</option>
+            </select>
+            <div class="ctl-group" id="sel-c2"></div>
+          </div>
+          <div class="stepbar" data-stepper="seleccion"></div>
+          <div class="stage" id="sel-stage"></div>
+          <div class="duo">
+            <div class="log" id="sel-log"></div>
+            <div id="sel-final"></div>
+          </div>
+        </section>
+
+        <!-- PROYECCIÓN -->
+        <section
+          class="sheet"
+          id="p-proyeccion"
+          role="tabpanel"
+          aria-labelledby="tab-proyeccion"
+          hidden
+        >
+          <div class="intro">
+            <h2>Proyección π: elegir columnas</h2>
+            <p>
+              Conserva solo los atributos indicados. Como una relación es un
+              conjunto, las tuplas que quedan repetidas se eliminan. En SQL
+              corresponde a <code>SELECT DISTINCT</code>.
+            </p>
+          </div>
+          <div class="controls">
+            <span class="label">Ejemplos</span>
+            <div class="chips">
+              <button class="chip" data-pro-preset="Carrera">π Carrera</button>
+              <button class="chip" data-pro-preset="Carrera,Semestre">
+                π Carrera, Semestre
+              </button>
+              <button class="chip" data-pro-preset="Semestre">
+                π Semestre
+              </button>
+              <button class="chip" data-pro-preset="Carne,Nombre">
+                π Carne, Nombre
+              </button>
+            </div>
+          </div>
+          <div class="controls">
+            <span class="label">Atributos</span>
+            <div class="ctl-group" id="pro-cols"></div>
+          </div>
+          <div class="stepbar" data-stepper="proyeccion"></div>
+          <div class="stage" id="pro-stage"></div>
+          <div class="duo">
+            <div class="log" id="pro-log"></div>
+            <div id="pro-final"></div>
+          </div>
+        </section>
+
+        <!-- REUNIÓN -->
+        <section
+          class="sheet"
+          id="p-reunion"
+          role="tabpanel"
+          aria-labelledby="tab-reunion"
+          hidden
+        >
+          <div class="intro">
+            <h2>Reunión ⋈: combinar dos relaciones</h2>
+            <p>
+              La reunión es un producto cartesiano seguido de una selección: R
+              ⋈<sub>c</sub> S = σ<sub>c</sub>(R × S). Mira cómo se generan todas
+              las combinaciones y cuáles sobreviven.
+            </p>
+          </div>
+          <div class="controls">
+            <span class="label">Tipo</span>
+            <div class="chips" role="radiogroup" aria-label="Tipo de reunión">
+              <label class="chk"
+                ><input type="radio" name="jmode" value="prod" /> Producto
+                cartesiano ×</label
+              >
+              <label class="chk"
+                ><input type="radio" name="jmode" value="equi" checked />
+                Equirreunión</label
+              >
+              <label class="chk"
+                ><input type="radio" name="jmode" value="nat" /> Reunión
+                natural</label
+              >
+              <label class="chk"
+                ><input type="radio" name="jmode" value="trap" /> Natural con un
+                nombre repetido</label
+              >
+            </div>
+          </div>
+          <div class="stepbar" data-stepper="reunion"></div>
+          <div class="stage" id="jn-stage"></div>
+          <div class="duo">
+            <div class="log" id="jn-log"></div>
+            <div id="jn-final"></div>
+          </div>
+        </section>
+
+        <!-- DIVISIÓN -->
+        <section
+          class="sheet"
+          id="p-division"
+          role="tabpanel"
+          aria-labelledby="tab-division"
+          hidden
+        >
+          <div class="intro">
+            <h2>División ÷: las preguntas con "todos"</h2>
+            <p>
+              ¿Qué estudiantes aprobaron <strong>todos</strong> los cursos
+              básicos? Para cada estudiante se revisa si tiene cada uno de los
+              cursos del divisor. Si le falta uno solo, queda fuera. Cambia los
+              cursos básicos y observa cómo cambia el resultado.
+            </p>
+          </div>
+          <div class="controls">
+            <span class="label">Cursos en Basico (S)</span>
+            <div class="ctl-group" id="div-basico"></div>
+          </div>
+          <div class="stepbar" data-stepper="division"></div>
+          <div class="stage" id="div-stage"></div>
+          <div class="duo">
+            <div class="log" id="div-log"></div>
+            <div id="div-final"></div>
+          </div>
+        </section>
+
+        <!-- COMPOSICIÓN -->
+        <section
+          class="sheet"
+          id="p-composicion"
+          role="tabpanel"
+          aria-labelledby="tab-composicion"
+          hidden
+        >
+          <div class="intro">
+            <h2>Composición: operadores encadenados</h2>
+            <p>
+              Como cada operador devuelve una relación, el resultado de uno
+              puede ser la entrada del siguiente. Se evalúa de adentro hacia
+              afuera. Revisa también qué pasa cuando el orden es incorrecto.
+            </p>
+          </div>
+          <div class="controls">
+            <span class="label">Consulta</span>
+            <div class="chips" role="radiogroup" aria-label="Consulta">
+              <label class="chk"
+                ><input type="radio" name="cmode" value="a" checked /> Nombres
+                con semestre ≥ 5</label
+              >
+              <label class="chk"
+                ><input type="radio" name="cmode" value="b" /> Nombres de la
+                carrera Sistemas (con ⋈)</label
+              >
+              <label class="chk"
+                ><input type="radio" name="cmode" value="c" /> Orden
+                incorrecto</label
+              >
+            </div>
+          </div>
+          <div class="stepbar" data-stepper="composicion"></div>
+          <div class="stage" id="cmp-stage"></div>
+          <div class="duo">
+            <div class="log" id="cmp-log"></div>
+            <div id="cmp-final"></div>
+          </div>
+        </section>
+      </div>
+
+      <nav
+        class="foot"
+        style="display: flex; flex-wrap: wrap; gap: 14px"
+        aria-label="Navegación del curso"
+      >
+        <a href="../" style="color: var(--accent); font-weight: 700"
+          >← Inicio del curso</a
+        ><a
+          href="../normalization/"
+          style="color: var(--accent); font-weight: 700"
+          >Normalización paso a paso</a
+        >
+      </nav>
+      <footer class="foot">
+        Notación del curso: la condición y la lista de atributos se escriben
+        como subíndice del operador. Datos ficticios de ejemplo (SIRECA).
+      </footer>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+        // ---------- data ----------
+        const EST = {
+          name: "Estudiante",
+          cols: ["Carne", "Nombre", "Carrera", "Semestre"],
+          pk: [0],
+          rows: [
+            ["201901", "Ana López", "Sistemas", 7],
+            ["202002", "Luis Pérez", "Civil", 5],
+            ["202103", "María Cux", "Sistemas", 3],
+            ["202004", "José Tzoc", "Industrial", 5],
+            ["201805", "Carla Ixcot", "Sistemas", 8],
+            ["202206", "Pedro Ajú", "Civil", 1],
+          ],
+        };
+        const E3 = {
+          name: "Estudiante",
+          cols: ["Carne", "Nombre", "Cod_carrera"],
+          pk: [0],
+          rows: [
+            ["201901", "Ana López", "09"],
+            ["202002", "Luis Pérez", "01"],
+            ["202103", "María Cux", "09"],
+          ],
+        };
+        const CAR = {
+          name: "Carrera",
+          cols: ["Cod", "Nombre_carrera"],
+          pk: [0],
+          rows: [
+            ["09", "Sistemas"],
+            ["01", "Civil"],
+          ],
+        };
+        const APR = {
+          name: "Aprobado (R)",
+          cols: ["Carne", "Codigo"],
+          pk: [0, 1],
+          rows: [
+            ["201901", "101"],
+            ["201901", "102"],
+            ["201901", "103"],
+            ["202002", "101"],
+            ["202002", "103"],
+            ["202103", "101"],
+            ["202103", "102"],
+            ["202004", "102"],
+          ],
+        };
+        const CURSOS = {
+          101: "Programación 1",
+          102: "Programación 2",
+          103: "Bases de Datos 1",
+        };
+
+        // ---------- helpers ----------
+        const $ = (s, r = document) => r.querySelector(s);
+        const esc = (v) =>
+          String(v).replace(
+            /[&<>"]/g,
+            (c) =>
+              ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+          );
+        const fmtVal = (v) =>
+          typeof v === "number" ? String(v) : "'" + v + "'";
+        function tableHTML(rel, o = {}) {
+          const states = o.states || [],
+            marks = o.marks || [],
+            hc = new Set(o.hlCols || []);
+          const showMark = o.marks !== undefined;
+          let h =
+            '<figure class="rel fade' +
+            (o.result ? " is-result" : "") +
+            '"><figcaption>' +
+            esc(o.title || rel.name) +
+            '<span class="meta">grado ' +
+            rel.cols.length +
+            " · cardinalidad " +
+            rel.rows.length +
+            "</span></figcaption>";
+          if (!rel.rows.length && o.emptyMsg)
+            return (
+              h +
+              '<div class="empty-rel">' +
+              esc(o.emptyMsg) +
+              "</div></figure>"
+            );
+          h += '<div class="scroll"><table class="t"><thead><tr>';
+          if (showMark) h += '<th class="mark" aria-label="estado"></th>';
+          rel.cols.forEach((c, i) => {
+            h +=
+              '<th class="' +
+              ((rel.pk || []).includes(i) ? "pk " : "") +
+              (hc.has(i) ? "hc" : "") +
+              '">' +
+              esc(c) +
+              "</th>";
+          });
+          h += "</tr></thead><tbody>";
+          rel.rows.forEach((r, ri) => {
+            h += '<tr class="' + (states[ri] || "") + '">';
+            if (showMark)
+              h += '<td class="mark">' + (marks[ri] || "") + "</td>";
+            r.forEach((v, ci) => {
+              h +=
+                '<td class="' +
+                (hc.has(ci) ? "hc" : "") +
+                '">' +
+                esc(v) +
+                "</td>";
+            });
+            h += "</tr>";
+          });
+          return h + "</tbody></table></div></figure>";
+        }
+        function stats(pairs) {
+          return (
+            '<div class="stats">' +
+            pairs
+              .map(
+                ([k, v]) =>
+                  '<span class="stat">' + k + " <b>" + v + "</b></span>",
+              )
+              .join("") +
+            "</div>"
+          );
+        }
+        function finalCard(expr, sql, extra) {
+          return (
+            '<div class="card fade"><span class="k">Expresión</span><div class="expr">' +
+            expr +
+            '</div><span class="k">SQL equivalente</span><pre class="sql">' +
+            esc(sql) +
+            "</pre>" +
+            (extra || "") +
+            "</div>"
+          );
+        }
+        function placeholderCard(text) {
+          return (
+            '<div class="card"><span class="k">Resultado</span><p class="note">' +
+            text +
+            "</p></div>"
+          );
+        }
+        function dedupe(rows) {
+          const seen = new Set(),
+            out = [];
+          rows.forEach((r) => {
+            const k = JSON.stringify(r);
+            if (!seen.has(k)) {
+              seen.add(k);
+              out.push(r);
+            }
+          });
+          return out;
+        }
+
+        // ---------- generic stepper ----------
+        const steppers = {};
+        function makeStepper(key, ids, compute) {
+          const bar = $('[data-stepper="' + key + '"]');
+          bar.innerHTML =
+            '<button class="btn primary" data-a="next">Paso siguiente</button><button class="btn" data-a="all">Ver resultado</button><button class="btn" data-a="reset">Reiniciar</button><span class="stepcount"></span>';
+          const st = { snaps: [], i: 0 };
+          function render() {
+            const s = st.snaps[st.i];
+            $("#" + ids.stage).innerHTML = s.stage;
+            const msgs = st.snaps
+              .slice(0, st.i + 1)
+              .map((x) => x.msg)
+              .filter(Boolean);
+            $("#" + ids.log).innerHTML =
+              "<h3>Paso a paso</h3><ol>" +
+              msgs.map((m) => "<li>" + m + "</li>").join("") +
+              "</ol>";
+            const ol = $("#" + ids.log + " ol");
+            if (ol) ol.scrollTop = ol.scrollHeight;
+            $("#" + ids.final).innerHTML =
+              s.final ||
+              placeholderCard(
+                "Avanza con <strong>Paso siguiente</strong> o salta al final con <strong>Ver resultado</strong>.",
+              );
+            bar.querySelector('[data-a="next"]').disabled =
+              st.i >= st.snaps.length - 1;
+            bar.querySelector('[data-a="all"]').disabled =
+              st.i >= st.snaps.length - 1;
+            bar.querySelector(".stepcount").textContent =
+              "paso " + (st.i + 1) + " de " + st.snaps.length;
+          }
+          function reset() {
+            st.snaps = compute();
+            st.i = 0;
+            render();
+          }
+          bar.addEventListener("click", (e) => {
+            const a = e.target.closest("button");
+            if (!a) return;
+            if (a.dataset.a === "next")
+              st.i = Math.min(st.i + 1, st.snaps.length - 1);
+            if (a.dataset.a === "all") st.i = st.snaps.length - 1;
+            if (a.dataset.a === "reset") st.i = 0;
+            render();
+          });
+          steppers[key] = { reset };
+          return reset;
+        }
+
+        // ========== SELECCIÓN ==========
+        const OPS = {
+          "=": (a, b) => a === b,
+          "≠": (a, b) => a !== b,
+          "<": (a, b) => a < b,
+          ">": (a, b) => a > b,
+          "≤": (a, b) => a <= b,
+          "≥": (a, b) => a >= b,
+        };
+        const SQLOP = {
+          "=": "=",
+          "≠": "<>",
+          "<": "<",
+          ">": ">",
+          "≤": "<=",
+          "≥": ">=",
+        };
+        const CARRERAS = ["Sistemas", "Civil", "Industrial"];
+        function condCtl(box, id, def) {
+          box.innerHTML =
+            '<select id="' +
+            id +
+            '-a" aria-label="Atributo"><option>Carrera</option><option>Semestre</option></select>' +
+            '<select id="' +
+            id +
+            '-o" aria-label="Operador">' +
+            Object.keys(OPS)
+              .map((o) => "<option>" + o + "</option>")
+              .join("") +
+            "</select>" +
+            '<span id="' +
+            id +
+            '-vbox"></span>';
+          const a = $("#" + id + "-a"),
+            o = $("#" + id + "-o");
+          function valCtl(v) {
+            const vb = $("#" + id + "-vbox");
+            if (a.value === "Carrera")
+              vb.innerHTML =
+                '<select id="' +
+                id +
+                '-v" aria-label="Valor">' +
+                CARRERAS.map((c) => "<option>" + c + "</option>").join("") +
+                "</select>";
+            else
+              vb.innerHTML =
+                '<input type="number" id="' +
+                id +
+                '-v" min="1" max="10" aria-label="Valor">';
+            if (v !== undefined) $("#" + id + "-v").value = v;
+            else
+              $("#" + id + "-v").value = a.value === "Carrera" ? "Sistemas" : 5;
+            $("#" + id + "-v").addEventListener("change", () =>
+              steppers.seleccion.reset(),
+            );
+            $("#" + id + "-v").addEventListener("input", () =>
+              steppers.seleccion.reset(),
+            );
+          }
+          a.addEventListener("change", () => {
+            valCtl();
+            steppers.seleccion && steppers.seleccion.reset();
+          });
+          o.addEventListener("change", () => steppers.seleccion.reset());
+          const set = (c) => {
+            a.value = c.a;
+            o.value = c.o;
+            valCtl(c.v);
+          };
+          set(def);
+          return {
+            get: () => ({
+              a: a.value,
+              o: o.value,
+              v:
+                a.value === "Semestre"
+                  ? Number($("#" + id + "-v").value)
+                  : $("#" + id + "-v").value,
+            }),
+            set,
+          };
+        }
+        const c1 = condCtl($("#sel-c1"), "c1", {
+          a: "Carrera",
+          o: "=",
+          v: "Sistemas",
+        });
+        const c2 = condCtl($("#sel-c2"), "c2", { a: "Semestre", o: "≥", v: 5 });
+        const two = $("#sel-two"),
+          conn = $("#sel-conn");
+        function syncTwo() {
+          conn.hidden = !two.checked;
+          $("#sel-c2").hidden = !two.checked;
+        }
+        two.addEventListener("change", () => {
+          syncTwo();
+          steppers.seleccion.reset();
+        });
+        conn.addEventListener("change", () => steppers.seleccion.reset());
+        const condTxt = (c) => esc(c.a) + " " + c.o + " " + esc(fmtVal(c.v));
+        const condSql = (c) => c.a + " " + SQLOP[c.o] + " " + fmtVal(c.v);
+        function evalCond(c, row) {
+          const idx = EST.cols.indexOf(c.a);
+          return OPS[c.o](row[idx], c.v);
+        }
+        makeStepper(
+          "seleccion",
+          { stage: "sel-stage", log: "sel-log", final: "sel-final" },
+          function () {
+            const A = c1.get(),
+              B = two.checked ? c2.get() : null,
+              cn = conn.value;
+            const exprCond =
+              condTxt(A) +
+              (B ? (cn === "and" ? " ∧ " : " ∨ ") + condTxt(B) : "");
+            const snaps = [],
+              states = [],
+              marks = [];
+            snaps.push({
+              stage: tableHTML(EST, { marks: [] }),
+              msg:
+                "Se evaluará <code>" +
+                exprCond +
+                "</code> en cada una de las " +
+                EST.rows.length +
+                " tuplas de Estudiante.",
+            });
+            const res = [];
+            EST.rows.forEach((r, i) => {
+              const ra = evalCond(A, r),
+                rb = B ? evalCond(B, r) : null;
+              const pass = B ? (cn === "and" ? ra && rb : ra || rb) : ra;
+              states[i] = pass ? "ok" : "no";
+              marks[i] = pass ? "✔" : "✘";
+              if (pass) res.push(r);
+              const vA = r[EST.cols.indexOf(A.a)];
+              let m =
+                "<strong>" +
+                esc(r[1]) +
+                "</strong>: " +
+                esc(A.a) +
+                " = " +
+                esc(vA) +
+                " → " +
+                condTxt(A) +
+                " " +
+                (ra ? "✔" : "✘");
+              if (B) {
+                const vB = r[EST.cols.indexOf(B.a)];
+                m +=
+                  (cn === "and" ? " ∧ " : " ∨ ") +
+                  esc(B.a) +
+                  " = " +
+                  esc(vB) +
+                  " → " +
+                  (rb ? "✔" : "✘");
+              }
+              m += pass
+                ? ' · <span class="pill ok">pasa</span>'
+                : ' · <span class="pill bad">se descarta</span>';
+              const cur = states.map((s, j) => (j === i ? s + " cur" : s));
+              snaps.push({
+                stage: tableHTML(EST, { states: cur, marks: marks.slice() }),
+                msg: m,
+              });
+            });
+            const R = { name: "Resultado", cols: EST.cols, pk: [0], rows: res };
+            const sql =
+              "SELECT *\nFROM Estudiante\nWHERE " +
+              condSql(A) +
+              (B ? (cn === "and" ? " AND " : " OR ") + condSql(B) : "") +
+              ";";
+            let extra = stats([
+              ["grado", "4 → 4"],
+              ["cardinalidad", "6 → " + res.length],
+            ]);
+            if (B && cn === "and")
+              extra +=
+                '<p class="note">Con ∧ la tupla debe cumplir las dos condiciones. Prueba cambiar a ∨ y compara la cardinalidad.</p>';
+            if (B && cn === "or")
+              extra +=
+                '<p class="note">Con ∨ basta que cumpla una de las dos. Por eso el resultado suele tener más tuplas que con ∧.</p>';
+            snaps.push({
+              stage:
+                tableHTML(EST, { states, marks }) +
+                tableHTML(R, {
+                  result: true,
+                  title: "Resultado",
+                  emptyMsg:
+                    "Ninguna tupla cumple la condición: el resultado es una relación vacía.",
+                }),
+              msg:
+                "Resultado: " +
+                res.length +
+                " de " +
+                EST.rows.length +
+                " tuplas cumplen la condición. Las columnas no cambian.",
+              final: finalCard(
+                "σ<sub>" + exprCond + "</sub>(Estudiante)",
+                sql,
+                extra,
+              ),
+            });
+            return snaps;
+          },
+        );
+        const SEL_PRESETS = {
+          1: [{ a: "Carrera", o: "=", v: "Sistemas" }, null],
+          2: [
+            { a: "Carrera", o: "=", v: "Sistemas" },
+            { a: "Semestre", o: "≥", v: 5 },
+            "and",
+          ],
+          3: [
+            { a: "Carrera", o: "=", v: "Sistemas" },
+            { a: "Semestre", o: "≥", v: 5 },
+            "or",
+          ],
+          4: [{ a: "Semestre", o: "≠", v: 5 }, null],
+        };
+        document.querySelectorAll("[data-sel-preset]").forEach((b) =>
+          b.addEventListener("click", () => {
+            const p = SEL_PRESETS[b.dataset.selPreset];
+            c1.set(p[0]);
+            two.checked = !!p[1];
+            if (p[1]) {
+              c2.set(p[1]);
+              conn.value = p[2];
+            }
+            syncTwo();
+            steppers.seleccion.reset();
+          }),
+        );
+        syncTwo();
+
+        // ========== PROYECCIÓN ==========
+        $("#pro-cols").innerHTML = EST.cols
+          .map(
+            (c, i) =>
+              '<label class="chk"><input type="checkbox" id="pc-' +
+              i +
+              '" value="' +
+              i +
+              '"' +
+              (c === "Carrera" ? " checked" : "") +
+              "> " +
+              c +
+              "</label>",
+          )
+          .join("");
+        $("#pro-cols").addEventListener("change", () =>
+          steppers.proyeccion.reset(),
+        );
+        makeStepper(
+          "proyeccion",
+          { stage: "pro-stage", log: "pro-log", final: "pro-final" },
+          function () {
+            const idx = [
+              ...document.querySelectorAll("#pro-cols input:checked"),
+            ].map((x) => Number(x.value));
+            if (!idx.length)
+              return [
+                {
+                  stage: tableHTML(EST),
+                  msg: "Marca al menos un atributo para proyectar.",
+                  final: placeholderCard(
+                    "Sin atributos no hay proyección. Marca al menos uno.",
+                  ),
+                },
+              ];
+            const names = idx.map((i) => EST.cols[i]);
+            const snaps = [],
+              resRows = [],
+              states = [],
+              marks = [];
+            const mk = (cur) => {
+              const R = {
+                name: "Resultado",
+                cols: names,
+                pk: [],
+                rows: resRows.slice(),
+              };
+              return (
+                tableHTML(EST, { hlCols: idx, states: cur || states.slice() }) +
+                tableHTML(R, {
+                  result: true,
+                  title: "Resultado en construcción",
+                  marks: resRows.map(() => ""),
+                  emptyMsg: "Todavía vacío.",
+                })
+              );
+            };
+            snaps.push({
+              stage: mk(),
+              msg:
+                "Se conservan solo las columnas <code>" +
+                names.join(", ") +
+                "</code> (en morado). Se recorre cada tupla.",
+            });
+            const seen = new Set();
+            let dups = 0;
+            EST.rows.forEach((r, i) => {
+              const t = idx.map((j) => r[j]),
+                k = JSON.stringify(t);
+              let m =
+                "<strong>" +
+                esc(r[1]) +
+                "</strong> → (" +
+                t.map(esc).join(", ") +
+                ")";
+              if (seen.has(k)) {
+                states[i] = "dup";
+                dups++;
+                m +=
+                  ' · <span class="pill bad">ya está en el resultado: se elimina</span>';
+              } else {
+                seen.add(k);
+                resRows.push(t);
+                states[i] = "ok";
+                m += ' · <span class="pill ok">nueva tupla</span>';
+              }
+              snaps.push({
+                stage: mk(states.map((s, j) => (j === i ? s + " cur" : s))),
+                msg: m,
+              });
+            });
+            const R = { name: "Resultado", cols: names, pk: [], rows: resRows };
+            let extra = stats([
+              ["grado", "4 → " + names.length],
+              ["cardinalidad", "6 → " + resRows.length],
+              ["duplicados eliminados", dups],
+            ]);
+            if (idx.includes(0))
+              extra +=
+                '<p class="note good">La proyección incluye Carne, la llave primaria. Como la llave nunca se repite, no se elimina ninguna tupla.</p>';
+            else if (dups)
+              extra +=
+                '<p class="note warn">Un <code>SELECT ' +
+                names.join(", ") +
+                "</code> sin DISTINCT devolvería las 6 filas, con " +
+                dups +
+                " repetida(s). La proyección del álgebra siempre elimina duplicados.</p>";
+            snaps.push({
+              stage:
+                tableHTML(EST, { hlCols: idx, states }) +
+                tableHTML(R, { result: true, title: "Resultado" }),
+              msg:
+                "Resultado: " +
+                resRows.length +
+                " tupla(s) distintas." +
+                (dups ? " Se eliminaron " + dups + " duplicado(s)." : ""),
+              final: finalCard(
+                "π<sub>" + names.join(", ") + "</sub>(Estudiante)",
+                "SELECT DISTINCT " + names.join(", ") + "\nFROM Estudiante;",
+                extra,
+              ),
+            });
+            return snaps;
+          },
+        );
+        document.querySelectorAll("[data-pro-preset]").forEach((b) =>
+          b.addEventListener("click", () => {
+            const want = b.dataset.proPreset.split(",");
+            EST.cols.forEach((c, i) => {
+              $("#pc-" + i).checked = want.includes(c);
+            });
+            steppers.proyeccion.reset();
+          }),
+        );
+
+        // ========== REUNIÓN ==========
+        function joinSpec(mode) {
+          if (mode === "nat")
+            return {
+              S: {
+                name: "Carrera",
+                cols: ["Cod_carrera", "Nombre_carrera"],
+                pk: [0],
+                rows: CAR.rows,
+              },
+              common: [["Cod_carrera", "Cod_carrera"]],
+            };
+          if (mode === "trap")
+            return {
+              S: {
+                name: "Carrera",
+                cols: ["Cod_carrera", "Nombre"],
+                pk: [0],
+                rows: CAR.rows,
+              },
+              common: [
+                ["Cod_carrera", "Cod_carrera"],
+                ["Nombre", "Nombre"],
+              ],
+            };
+          return {
+            S: CAR,
+            common: mode === "equi" ? [["Cod_carrera", "Cod"]] : [],
+          };
+        }
+        document
+          .querySelectorAll('input[name="jmode"]')
+          .forEach((r) =>
+            r.addEventListener("change", () => steppers.reunion.reset()),
+          );
+        makeStepper(
+          "reunion",
+          { stage: "jn-stage", log: "jn-log", final: "jn-final" },
+          function () {
+            const mode = document.querySelector(
+              'input[name="jmode"]:checked',
+            ).value;
+            const { S, common } = joinSpec(mode);
+            const R = E3,
+              natural = mode === "nat" || mode === "trap";
+            const prodCols = R.cols
+              .map((c) => (natural && S.cols.includes(c) ? "E." + c : c))
+              .concat(
+                S.cols.map((c) =>
+                  natural && R.cols.includes(c) ? "C." + c : c,
+                ),
+              );
+            const prod = [],
+              states = [],
+              marks = [],
+              snaps = [];
+            const condTxtJ = common
+              .map(([a, b]) =>
+                natural ? "E." + a + " = C." + b : a + " = " + b,
+              )
+              .join(" ∧ ");
+            const view = (curR, curS, cur) => {
+              const P = {
+                name: "Producto",
+                cols: prodCols,
+                pk: [],
+                rows: prod.slice(),
+              };
+              return (
+                '<div class="pipe">' +
+                tableHTML(R, {
+                  states: R.rows.map((_, i) => (i === curR ? "cur" : "")),
+                }) +
+                tableHTML(S, {
+                  states: S.rows.map((_, i) => (i === curS ? "cur" : "")),
+                }) +
+                "</div>" +
+                tableHTML(P, {
+                  title:
+                    mode === "prod"
+                      ? "Estudiante × Carrera"
+                      : "Estudiante × Carrera, filtrado",
+                  marks: marks.slice(),
+                  states: cur || states.slice(),
+                  emptyMsg: "Aún no hay combinaciones.",
+                })
+              );
+            };
+            let intro =
+              "Se combina cada tupla de Estudiante (3) con cada tupla de Carrera (2): 3 × 2 = 6 combinaciones.";
+            if (mode !== "prod")
+              intro +=
+                " Después se conserva solo la combinación que cumple <code>" +
+                condTxtJ +
+                "</code>.";
+            if (mode === "nat")
+              intro +=
+                " En la reunión natural la condición es automática: se igualan los atributos que se llaman igual (Cod_carrera).";
+            if (mode === "trap")
+              intro +=
+                " Aquí Carrera tiene un atributo llamado <code>Nombre</code>, igual que Estudiante. La reunión natural también lo va a comparar.";
+            snaps.push({ stage: view(-1, -1), msg: intro });
+            R.rows.forEach((r, i) =>
+              S.rows.forEach((s, j) => {
+                const row = r.concat(s);
+                prod.push(row);
+                let pass = true;
+                const parts = [];
+                common.forEach(([a, b]) => {
+                  const va = r[R.cols.indexOf(a)],
+                    vb = s[S.cols.indexOf(b)];
+                  const ok = va === vb;
+                  pass = pass && ok;
+                  parts.push(
+                    esc(va) + " = " + esc(vb) + " " + (ok ? "✔" : "✘"),
+                  );
+                });
+                const k = prod.length - 1;
+                if (mode === "prod") {
+                  states[k] = "ok";
+                  marks[k] = "+";
+                } else {
+                  states[k] = pass ? "ok" : "no";
+                  marks[k] = pass ? "✔" : "✘";
+                }
+                let m =
+                  "<strong>" +
+                  esc(r[1]) +
+                  "</strong> con <strong>" +
+                  esc(s[1]) +
+                  "</strong>";
+                if (mode === "prod") m += " → se agrega la combinación";
+                else
+                  m +=
+                    ": " +
+                    parts.join(" ∧ ") +
+                    (pass
+                      ? ' · <span class="pill ok">se conserva</span>'
+                      : ' · <span class="pill bad">se descarta</span>');
+                snaps.push({
+                  stage: view(
+                    i,
+                    j,
+                    states.map((st, q) => (q === k ? st + " cur" : st)),
+                  ),
+                  msg: m,
+                });
+              }),
+            );
+            // result
+            let resCols, resRows;
+            if (mode === "prod") {
+              resCols = prodCols;
+              resRows = prod;
+            } else if (natural) {
+              const sOnly = S.cols.filter((c) => !R.cols.includes(c));
+              resCols = R.cols.concat(sOnly);
+              resRows = prod
+                .filter((_, k) => states[k] === "ok")
+                .map((row) =>
+                  row
+                    .slice(0, R.cols.length)
+                    .concat(
+                      sOnly.map((c) => row[R.cols.length + S.cols.indexOf(c)]),
+                    ),
+                );
+            } else {
+              resCols = prodCols;
+              resRows = prod.filter((_, k) => states[k] === "ok");
+            }
+            const RES = {
+              name: "Resultado",
+              cols: resCols,
+              pk: [],
+              rows: resRows,
+            };
+            const exprs = {
+              prod: "Estudiante × Carrera",
+              equi: "Estudiante ⋈<sub>Cod_carrera = Cod</sub> Carrera",
+              nat: "Estudiante ⋈ Carrera",
+              trap: "Estudiante ⋈ Carrera",
+            };
+            const sqls = {
+              prod: "SELECT *\nFROM Estudiante CROSS JOIN Carrera;",
+              equi: "SELECT *\nFROM Estudiante JOIN Carrera\n     ON Estudiante.Cod_carrera = Carrera.Cod;",
+              nat: "SELECT *\nFROM Estudiante NATURAL JOIN Carrera;",
+              trap: "SELECT *\nFROM Estudiante NATURAL JOIN Carrera;\n-- compara Cod_carrera Y Nombre",
+            };
+            let extra = stats([
+              ["combinaciones", prod.length],
+              ["en el resultado", resRows.length],
+              ["grado", resCols.length],
+            ]);
+            if (mode === "prod")
+              extra +=
+                '<p class="note warn">Solo 3 de las 6 combinaciones tienen sentido: Ana aparece también con Civil, aunque es de Sistemas. Para quedarse con las correctas hace falta una selección: eso es la reunión.</p>';
+            if (mode === "equi")
+              extra +=
+                '<p class="note">Cod_carrera y Cod quedan como dos columnas con el mismo valor en cada fila. La reunión natural elimina esa repetición.</p>';
+            if (mode === "nat")
+              extra +=
+                '<p class="note good">Cod_carrera aparece una sola vez. Funciona porque el único atributo con el mismo nombre es justamente la llave que relaciona las tablas.</p>';
+            if (mode === "trap")
+              extra +=
+                '<p class="note bad">Resultado vacío: además de Cod_carrera, la reunión natural exigió que el nombre del estudiante fuera igual al nombre de la carrera. Por eso conviene usar nombres como Nombre_carrera, o una reunión con condición explícita.</p>';
+            snaps.push({
+              stage:
+                view(-1, -1) +
+                tableHTML(RES, {
+                  result: true,
+                  title: "Resultado",
+                  emptyMsg:
+                    "Relación vacía: ninguna combinación cumplió todas las igualdades.",
+                }),
+              msg: "Resultado: " + resRows.length + " tupla(s).",
+              final: finalCard(exprs[mode], sqls[mode], extra),
+            });
+            return snaps;
+          },
+        );
+
+        // ========== DIVISIÓN ==========
+        $("#div-basico").innerHTML = Object.keys(CURSOS)
+          .map(
+            (c) =>
+              '<label class="chk"><input type="checkbox" id="bc-' +
+              c +
+              '" value="' +
+              c +
+              '"' +
+              (c !== "103" ? " checked" : "") +
+              "> " +
+              c +
+              " · " +
+              CURSOS[c] +
+              "</label>",
+          )
+          .join("");
+        $("#div-basico").addEventListener("change", () =>
+          steppers.division.reset(),
+        );
+        makeStepper(
+          "division",
+          { stage: "div-stage", log: "div-log", final: "div-final" },
+          function () {
+            const B = [
+              ...document.querySelectorAll("#div-basico input:checked"),
+            ].map((x) => x.value);
+            const S = {
+              name: "Basico (S)",
+              cols: ["Codigo"],
+              pk: [0],
+              rows: B.map((b) => [b]),
+            };
+            const cands = [...new Set(APR.rows.map((r) => r[0]))];
+            const res = [],
+              snaps = [],
+              rowStates = APR.rows.map(() => "");
+            const view = (cur) =>
+              tableHTML(APR, { states: cur || rowStates.slice() }) +
+              tableHTML(S, { emptyMsg: "Sin cursos." }) +
+              tableHTML(
+                {
+                  name: "Resultado",
+                  cols: ["Carne"],
+                  pk: [0],
+                  rows: res.map((r) => [r]),
+                },
+                {
+                  result: true,
+                  title: "Aprobado ÷ Basico",
+                  emptyMsg: "Todavía vacío.",
+                },
+              );
+            snaps.push({
+              stage: view(),
+              msg:
+                "Candidatos: los carnés que aparecen en Aprobado (" +
+                cands.join(", ") +
+                "). Para cada uno se revisa si tiene <strong>todos</strong> los cursos de Basico: {" +
+                (B.join(", ") || "vacío") +
+                "}.",
+            });
+            cands.forEach((c) => {
+              const has = new Set(
+                APR.rows.filter((r) => r[0] === c).map((r) => r[1]),
+              );
+              const checks = B.map(
+                (b) => "¿tiene " + b + "? " + (has.has(b) ? "✔" : "✘"),
+              );
+              const pass = B.every((b) => has.has(b));
+              if (pass) res.push(c);
+              APR.rows.forEach((r, i) => {
+                if (r[0] === c) rowStates[i] = pass ? "ok" : "no";
+              });
+              const cur = rowStates.map((s, i) =>
+                APR.rows[i][0] === c ? s + " cur" : s,
+              );
+              let m =
+                "<strong>" +
+                c +
+                "</strong> aprobó {" +
+                [...has].join(", ") +
+                "}. " +
+                (checks.join(" · ") || "No hay nada que revisar.") +
+                (pass
+                  ? ' · <span class="pill ok">entra</span>'
+                  : ' · <span class="pill bad">le falta al menos uno</span>');
+              snaps.push({ stage: view(cur), msg: m });
+            });
+            let extra = stats([
+              ["candidatos", cands.length],
+              ["en el resultado", res.length],
+            ]);
+            if (!B.length)
+              extra +=
+                '<p class="note warn">Con un divisor vacío no hay ningún curso que exigir, así que todos los candidatos cumplen "tener todos los cursos de S".</p>';
+            else
+              extra +=
+                '<p class="note">Comprobación: Resultado × Basico genera ' +
+                res.length * B.length +
+                " combinaciones y todas existen en Aprobado. Si alguna faltara, la división estaría mal.</p>";
+            if (B.length === 3)
+              extra +=
+                '<p class="note good">Con los 3 cursos solo queda quien los aprobó todos. Más cursos en el divisor = condición más exigente.</p>';
+            snaps.push({
+              stage: view(),
+              msg:
+                "Resultado: " +
+                (res.join(", ") || "ninguno") +
+                ". El resultado solo tiene Carne, el atributo de R que no está en S.",
+              final: finalCard(
+                "Aprobado ÷ Basico",
+                "-- SQL no tiene un operador de división.\n-- Se expresa con subconsultas (fuera del alcance del curso).",
+                extra,
+              ),
+            });
+            return snaps;
+          },
+        );
+
+        // ========== COMPOSICIÓN ==========
+        function select(rel, f, name) {
+          return {
+            name: name,
+            cols: rel.cols,
+            pk: rel.pk,
+            rows: rel.rows.filter(f),
+          };
+        }
+        function project(rel, names, name) {
+          const idx = names.map((n) => rel.cols.indexOf(n));
+          return {
+            name: name,
+            cols: names,
+            pk: [],
+            rows: dedupe(rel.rows.map((r) => idx.map((i) => r[i]))),
+          };
+        }
+        document
+          .querySelectorAll('input[name="cmode"]')
+          .forEach((r) =>
+            r.addEventListener("change", () => steppers.composicion.reset()),
+          );
+        makeStepper(
+          "composicion",
+          { stage: "cmp-stage", log: "cmp-log", final: "cmp-final" },
+          function () {
+            const mode = document.querySelector(
+              'input[name="cmode"]:checked',
+            ).value;
+            const stages = [];
+            let expr,
+              sql,
+              extraNote = "";
+            if (mode === "a") {
+              const s1 = select(EST, (r) => r[3] >= 5, "T1");
+              const s2 = project(s1, ["Nombre"], "T2");
+              stages.push({
+                arrow: null,
+                rel: EST,
+                msg: "Se parte de Estudiante (6 tuplas).",
+              });
+              stages.push({
+                arrow: "σ<sub>Semestre ≥ 5</sub>",
+                rel: s1,
+                msg:
+                  "Primero, lo de adentro: σ<sub>Semestre ≥ 5</sub> deja " +
+                  s1.rows.length +
+                  " tuplas, con todas sus columnas.",
+              });
+              stages.push({
+                arrow: "π<sub>Nombre</sub>",
+                rel: s2,
+                msg: "Después, sobre ese resultado intermedio, π<sub>Nombre</sub> deja solo el nombre.",
+                result: true,
+              });
+              expr = "π<sub>Nombre</sub>(σ<sub>Semestre ≥ 5</sub>(Estudiante))";
+              sql =
+                "SELECT DISTINCT Nombre\nFROM Estudiante\nWHERE Semestre >= 5;";
+              extraNote =
+                '<p class="note">Correspondencia: π es la lista del SELECT, σ es el WHERE y la relación es el FROM.</p>';
+            } else if (mode === "b") {
+              const prod = [];
+              E3.rows.forEach((r) =>
+                CAR.rows.forEach((s) => {
+                  if (r[2] === s[0]) prod.push(r.concat(s));
+                }),
+              );
+              const j = {
+                name: "T1",
+                cols: E3.cols.concat(CAR.cols),
+                pk: [],
+                rows: prod,
+              };
+              const s1 = select(j, (r) => r[4] === "Sistemas", "T2");
+              const s2 = project(s1, ["Nombre"], "T3");
+              stages.push({
+                arrow: null,
+                rel: E3,
+                msg: "Se parte de Estudiante (tiene solo el código de la carrera).",
+              });
+              stages.push({
+                arrow: "⋈<sub>Cod_carrera = Cod</sub> Carrera",
+                rel: j,
+                msg: "Lo más interno: la reunión agrega el nombre de la carrera a cada estudiante.",
+              });
+              stages.push({
+                arrow: "σ<sub>Nombre_carrera = 'Sistemas'</sub>",
+                rel: s1,
+                msg: "La selección conserva solo los estudiantes de Sistemas.",
+              });
+              stages.push({
+                arrow: "π<sub>Nombre</sub>",
+                rel: s2,
+                msg: "La proyección deja solo el nombre del estudiante.",
+                result: true,
+              });
+              expr =
+                "π<sub>Nombre</sub>(σ<sub>Nombre_carrera = 'Sistemas'</sub>(Estudiante ⋈<sub>Cod_carrera = Cod</sub> Carrera))";
+              sql =
+                "SELECT DISTINCT E.Nombre\nFROM Estudiante E\n     JOIN Carrera C ON E.Cod_carrera = C.Cod\nWHERE C.Nombre_carrera = 'Sistemas';";
+              extraNote =
+                '<p class="note">El patrón más común: π por fuera, σ en medio y ⋈ por dentro (SELECT – WHERE – JOIN).</p>';
+            } else {
+              const p1 = project(EST, ["Nombre"], "T1");
+              stages.push({
+                arrow: null,
+                rel: EST,
+                msg: "Se parte de Estudiante.",
+              });
+              stages.push({
+                arrow: "π<sub>Nombre</sub>",
+                rel: p1,
+                msg: "Lo de adentro primero: π<sub>Nombre</sub> deja una sola columna. Semestre ya no existe.",
+              });
+              stages.push({
+                arrow: "σ<sub>Semestre ≥ 5</sub>",
+                error:
+                  "Error: la condición usa Semestre, pero la relación intermedia T1 solo tiene el atributo Nombre. No hay con qué comparar.",
+                msg: "σ<sub>Semestre ≥ 5</sub> no se puede evaluar: la expresión no es válida.",
+              });
+              expr =
+                "σ<sub>Semestre ≥ 5</sub>(π<sub>Nombre</sub>(Estudiante))  ✘";
+              sql =
+                "-- No tiene traducción válida.\n-- Versión correcta: proyectar DESPUÉS de seleccionar.";
+              extraNote =
+                '<p class="note bad">Regla práctica: si van a proyectar antes, la proyección debe incluir todos los atributos que usan las operaciones de afuera.</p>';
+            }
+            const snaps = [];
+            stages.forEach((_, k) => {
+              let h = '<div class="pipe">';
+              stages.slice(0, k + 1).forEach((s, q) => {
+                if (s.arrow) h += '<div class="arrow">↓ ' + s.arrow + "</div>";
+                h += s.error
+                  ? '<div class="errbox fade">' + esc(s.error) + "</div>"
+                  : tableHTML(s.rel, {
+                      title:
+                        s.rel.name === "Estudiante"
+                          ? "Estudiante"
+                          : s.rel.name +
+                            (s.result && q === k
+                              ? " · resultado"
+                              : " · resultado intermedio"),
+                      result: s.result && q === k,
+                    });
+              });
+              h += "</div>";
+              const last = k === stages.length - 1;
+              snaps.push({
+                stage: h,
+                msg: stages[k].msg,
+                final: last ? finalCard(expr, sql, extraNote) : null,
+              });
+            });
+            return snaps;
+          },
+        );
+
+        // ---------- tabs ----------
+        const TABS = [
+          "seleccion",
+          "proyeccion",
+          "reunion",
+          "division",
+          "composicion",
+        ];
+        function show(t) {
+          if (!TABS.includes(t)) t = "seleccion";
+          TABS.forEach((x) => {
+            $("#p-" + x).hidden = x !== t;
+            $("#tab-" + x).setAttribute(
+              "aria-selected",
+              x === t ? "true" : "false",
+            );
+          });
+          try {
+            localStorage.setItem("alg-tab", t);
+          } catch (e) {}
+        }
+        document
+          .querySelectorAll(".tab")
+          .forEach((b) =>
+            b.addEventListener("click", () => show(b.dataset.tab)),
+          );
+        Object.values(steppers).forEach((s) => s.reset());
+        let start = (location.hash || "").slice(1);
+        if (!TABS.includes(start)) {
+          try {
+            start = localStorage.getItem("alg-tab") || "seleccion";
+          } catch (e) {
+            start = "seleccion";
+          }
+        }
+        show(start);
+        window.addEventListener("hashchange", () => {
+          const t = location.hash.slice(1);
+          if (TABS.includes(t)) show(t);
+        });
+      })();
+    </script>
+  </body>
+</html>

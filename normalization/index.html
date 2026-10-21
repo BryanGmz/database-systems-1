@@ -1,0 +1,1579 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta
+      name="description"
+      content="Normalización paso a paso: dependencias funcionales, 1FN, 2FN, 3FN y FNBC."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%226%22 fill=%22%232c8559%22/%3E%3Ctext x=%2216%22 y=%2222%22 font-size=%2216%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22monospace%22 font-weight=%22700%22%3EBD%3C/text%3E%3C/svg%3E"
+    />
+    <title>Normalización Paso a Paso</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=JetBrains+Mono:wght@400;700&family=Source+Sans+3:wght@400;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="../assets/css/curso.css" />
+    <style>
+      table.t .tg {
+        background: var(--accent-soft);
+      }
+      table.t th.tg {
+        color: var(--accent);
+      }
+      tr.ce td {
+        background: var(--bad-soft);
+      }
+      tr.ce td.tg,
+      tr.ce td.hc {
+        background: var(--bad-soft);
+      }
+      tr.ok td.tg,
+      tr.ok td.hc {
+        background: var(--ok-soft);
+      }
+      th .fk {
+        color: var(--bad);
+        font-size: 11px;
+        margin-left: 4px;
+        font-weight: 700;
+      }
+      th .pkk {
+        color: var(--ok);
+        font-size: 11px;
+        margin-left: 4px;
+        font-weight: 700;
+      }
+      .diagram {
+        overflow-x: auto;
+        width: 100%;
+      }
+      .diagram svg {
+        display: block;
+        min-width: 560px;
+        width: 100%;
+        max-width: 980px;
+        height: auto;
+      }
+      .fd-completa {
+        color: var(--ok);
+      }
+      .fd-parcial {
+        color: var(--warn);
+      }
+      .fd-transitiva {
+        color: var(--bad);
+      }
+      .fd-fnbc {
+        color: var(--violet);
+      }
+      .fd-neutral {
+        color: var(--muted);
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 14px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .legend i {
+        width: 18px;
+        height: 4px;
+        border-radius: 2px;
+        background: currentColor;
+        display: inline-block;
+      }
+      .stage-col {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        width: 100%;
+        min-width: 0;
+      }
+      .rules {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        background: var(--violet-soft);
+        border-radius: 8px;
+        padding: 10px 14px;
+      }
+      .rules b {
+        color: var(--violet);
+      }
+      .schema {
+        font-family: var(--font-mono);
+        font-size: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .schema u {
+        text-underline-offset: 3px;
+      }
+      .schema .fkx {
+        color: var(--bad);
+      }
+      details.practice {
+        border: 1px dashed var(--line);
+        border-radius: var(--radius);
+        padding: 12px 14px;
+      }
+      details.practice > summary {
+        cursor: pointer;
+        font-weight: 700;
+        color: var(--accent);
+      }
+      details.practice[open] > summary {
+        margin-bottom: 12px;
+      }
+      .q {
+        display: grid;
+        grid-template-columns: minmax(140px, 200px) minmax(0, 1fr);
+        gap: 8px 14px;
+        align-items: start;
+        background: var(--surface-2);
+        border-radius: 8px;
+        padding: 10px 12px;
+      }
+      @media (max-width: 640px) {
+        .q {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+      .q .qa {
+        font-family: var(--font-mono);
+        font-weight: 700;
+      }
+      .q .opts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .q .fb {
+        grid-column: 1 / -1;
+        font-size: 15px;
+      }
+      .fb:empty {
+        display: none;
+      }
+      .fb.good {
+        color: var(--ok);
+      }
+      .fb.bad {
+        color: var(--bad);
+      }
+      .fb.warn {
+        color: var(--warn);
+      }
+      .fb b {
+        font-family: var(--font-mono);
+      }
+      .qlist {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .fdq {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        align-items: center;
+        background: var(--surface-2);
+        border-radius: 8px;
+        padding: 8px 12px;
+      }
+      .fdq .f {
+        font-family: var(--font-mono);
+        font-weight: 700;
+        overflow-wrap: anywhere;
+      }
+      .fdq .fb {
+        flex-basis: 100%;
+        font-size: 14.5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <span class="eyebrow"
+          >2817 · Sistemas de Bases de Datos 1 · Unidad 9</span
+        >
+        <h1>Normalización, paso a paso</h1>
+        <p class="lede">
+          Elige un caso y avanza paso a paso: se buscan las dependencias
+          funcionales con la pregunta
+          <em>¿qué necesito conocer para saber este dato?</em>, se dibuja el
+          diagrama, se clasifican y se descompone la tabla. Al final, la reunión
+          comprueba que no se perdió información.
+        </p>
+      </header>
+
+      <div>
+        <div class="tabs" role="tablist" aria-label="Casos">
+          <button class="tab" role="tab" id="tab-fn1" data-tab="fn1">
+            <span class="sym">1</span>1FN · Teléfonos
+          </button>
+          <button class="tab" role="tab" id="tab-nota" data-tab="nota">
+            <span class="sym">2</span>2FN · Nota_estudiante
+          </button>
+          <button class="tab" role="tab" id="tab-pedido" data-tab="pedido">
+            <span class="sym">3</span>3FN · Pedido
+          </button>
+          <button class="tab" role="tab" id="tab-asig" data-tab="asig">
+            <span class="sym">∑</span>Integrador · Asignación
+          </button>
+          <button class="tab" role="tab" id="tab-tutoria" data-tab="tutoria">
+            <span class="sym">BC</span>FNBC · Tutoría
+          </button>
+        </div>
+        <section
+          class="sheet"
+          id="p-fn1"
+          role="tabpanel"
+          aria-labelledby="tab-fn1"
+        ></section>
+        <section
+          class="sheet"
+          id="p-nota"
+          role="tabpanel"
+          aria-labelledby="tab-nota"
+          hidden
+        ></section>
+        <section
+          class="sheet"
+          id="p-pedido"
+          role="tabpanel"
+          aria-labelledby="tab-pedido"
+          hidden
+        ></section>
+        <section
+          class="sheet"
+          id="p-asig"
+          role="tabpanel"
+          aria-labelledby="tab-asig"
+          hidden
+        ></section>
+        <section
+          class="sheet"
+          id="p-tutoria"
+          role="tabpanel"
+          aria-labelledby="tab-tutoria"
+          hidden
+        ></section>
+      </div>
+
+      <nav
+        class="foot"
+        style="display: flex; flex-wrap: wrap; gap: 14px"
+        aria-label="Navegación del curso"
+      >
+        <a href="../" style="color: var(--accent); font-weight: 700"
+          >← Inicio del curso</a
+        ><a href="../algebra/" style="color: var(--accent); font-weight: 700"
+          >Álgebra relacional paso a paso</a
+        >
+      </nav>
+      <footer class="foot">
+        Receta: 1) identificar la PK · 2) encontrar las DF · 3) 1FN · 4) separar
+        parciales (2FN) · 5) separar transitivas (3FN) · 6) verificar con la
+        reunión. Datos ficticios de ejemplo.
+      </footer>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+        const $ = (s, r = document) => r.querySelector(s);
+        const esc = (v) =>
+          String(v).replace(
+            /[&<>"]/g,
+            (c) =>
+              ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+          );
+        const setEq = (a, b) =>
+          a.length === b.length && a.every((x) => b.includes(x));
+        const isSub = (a, b) => a.every((x) => b.includes(x));
+        const list = (a) => a.join(", ");
+
+        const CASES = {
+          nota: {
+            title: "Segunda forma normal: Nota_estudiante",
+            intro:
+              "Notas de estudiantes por curso. La llave es compuesta, así que hay que buscar dependencias parciales.",
+            table: "Nota_estudiante",
+            attrs: [
+              "Carne",
+              "Codigo",
+              "Nombre_est",
+              "Nombre_curso",
+              "Creditos",
+              "Nota",
+            ],
+            pk: ["Carne", "Codigo"],
+            rows: [
+              ["201901", "101", "Ana López", "Programación 1", "5", "85"],
+              ["201901", "103", "Ana López", "Bases de Datos 1", "5", "78"],
+              ["202002", "101", "Luis Pérez", "Programación 1", "5", "64"],
+              ["202103", "101", "María Cux", "Programación 1", "5", "90"],
+              ["202103", "103", "María Cux", "Bases de Datos 1", "5", "71"],
+            ],
+            questions: [
+              {
+                a: "Nombre_est",
+                c: ["Carne"],
+                why: "El nombre es un dato del estudiante: basta el carné, no importa el curso.",
+              },
+              {
+                a: "Nombre_curso",
+                c: ["Codigo"],
+                why: "El nombre es un dato del curso: basta el código.",
+              },
+              {
+                a: "Creditos",
+                c: ["Codigo"],
+                why: "Los créditos son del curso: basta el código.",
+              },
+              {
+                a: "Nota",
+                c: ["Carne", "Codigo"],
+                why: "Una nota es de un estudiante EN un curso: se necesitan los dos.",
+              },
+            ],
+            fds: [
+              { det: ["Carne", "Codigo"], dep: ["Nota"], type: "completa" },
+              { det: ["Carne"], dep: ["Nombre_est"], type: "parcial" },
+              {
+                det: ["Codigo"],
+                dep: ["Nombre_curso", "Creditos"],
+                type: "parcial",
+              },
+            ],
+            steps: [
+              {
+                label: "2FN",
+                note: "Cada dependencia parcial se va a una tabla nueva, con la parte de la llave de la que depende como PK. En la tabla original queda la llave completa y lo que depende de ella completa.",
+                tables: [
+                  {
+                    name: "Estudiante",
+                    pk: ["Carne"],
+                    cols: ["Carne", "Nombre_est"],
+                  },
+                  {
+                    name: "Curso",
+                    pk: ["Codigo"],
+                    cols: ["Codigo", "Nombre_curso", "Creditos"],
+                  },
+                  {
+                    name: "Nota",
+                    pk: ["Carne", "Codigo"],
+                    cols: ["Carne", "Codigo", "Nota"],
+                    fk: { Carne: "Estudiante", Codigo: "Curso" },
+                  },
+                ],
+              },
+              {
+                label: "3FN",
+                note: "Ninguna tabla tiene un atributo no clave que dependa de otro no clave: el resultado de 2FN ya está en 3FN.",
+                same: true,
+              },
+            ],
+          },
+          pedido: {
+            title: "Tercera forma normal: Pedido",
+            intro:
+              "Pedidos de una distribuidora. La llave es simple (ya está en 2FN), pero los datos del cliente se repiten. Busca la dependencia transitiva.",
+            table: "Pedido",
+            attrs: [
+              "No_pedido",
+              "Fecha",
+              "Id_cliente",
+              "Nombre_cliente",
+              "Direccion_cliente",
+            ],
+            pk: ["No_pedido"],
+            rows: [
+              [
+                "5001",
+                "02/10",
+                "C7",
+                "Ferretería Xela",
+                "4a calle 10-20, zona 1",
+              ],
+              [
+                "5002",
+                "03/10",
+                "C9",
+                "Constructora Sur",
+                "Km 4 salida a Salcajá",
+              ],
+              [
+                "5003",
+                "05/10",
+                "C7",
+                "Ferretería Xela",
+                "4a calle 10-20, zona 1",
+              ],
+              [
+                "5004",
+                "06/10",
+                "C7",
+                "Ferretería Xela",
+                "4a calle 10-20, zona 1",
+              ],
+            ],
+            questions: [
+              {
+                a: "Fecha",
+                c: ["No_pedido"],
+                why: "Cada pedido tiene una fecha.",
+              },
+              {
+                a: "Id_cliente",
+                c: ["No_pedido"],
+                why: "Cada pedido lo hace un cliente.",
+              },
+              {
+                a: "Nombre_cliente",
+                c: ["Id_cliente"],
+                alt: [["No_pedido"]],
+                why: "El nombre es un dato del cliente: C7 siempre es Ferretería Xela, en cualquier pedido.",
+              },
+              {
+                a: "Direccion_cliente",
+                c: ["Id_cliente"],
+                alt: [["No_pedido"]],
+                why: "La dirección es un dato del cliente, no del pedido.",
+              },
+            ],
+            fds: [
+              {
+                det: ["No_pedido"],
+                dep: ["Fecha", "Id_cliente"],
+                type: "completa",
+              },
+              {
+                det: ["Id_cliente"],
+                dep: ["Nombre_cliente", "Direccion_cliente"],
+                type: "transitiva",
+              },
+            ],
+            steps: [
+              {
+                label: "2FN",
+                note: "La llave es simple, así que no puede haber dependencias parciales: la tabla ya está en 2FN. Aun así, los datos de Ferretería Xela se repiten.",
+                same: true,
+              },
+              {
+                label: "3FN",
+                note: "El determinante de la transitiva (Id_cliente) se va con lo que determina a una tabla nueva. En Pedido queda Id_cliente como FK.",
+                tables: [
+                  {
+                    name: "Pedido",
+                    pk: ["No_pedido"],
+                    cols: ["No_pedido", "Fecha", "Id_cliente"],
+                    fk: { Id_cliente: "Cliente" },
+                  },
+                  {
+                    name: "Cliente",
+                    pk: ["Id_cliente"],
+                    cols: ["Id_cliente", "Nombre_cliente", "Direccion_cliente"],
+                  },
+                ],
+              },
+            ],
+          },
+          asig: {
+            title: "Integrador: Asignación, de 1FN a 3FN",
+            intro:
+              "Horas que cada empleado dedica a cada proyecto. Tiene dependencias parciales y una transitiva escondida.",
+            table: "Asignacion",
+            attrs: [
+              "Id_emp",
+              "Id_proy",
+              "Nombre_emp",
+              "Id_depto",
+              "Nombre_depto",
+              "Nombre_proy",
+              "Horas",
+            ],
+            pk: ["Id_emp", "Id_proy"],
+            rows: [
+              [
+                "E1",
+                "P10",
+                "Ana López",
+                "D1",
+                "Desarrollo",
+                "Portal web",
+                "20",
+              ],
+              ["E1", "P20", "Ana López", "D1", "Desarrollo", "App móvil", "15"],
+              ["E2", "P10", "Luis Pérez", "D2", "Soporte", "Portal web", "10"],
+              ["E3", "P20", "María Cux", "D1", "Desarrollo", "App móvil", "25"],
+              ["E2", "P30", "Luis Pérez", "D2", "Soporte", "Intranet", "8"],
+            ],
+            questions: [
+              {
+                a: "Nombre_emp",
+                c: ["Id_emp"],
+                why: "El nombre es del empleado.",
+              },
+              {
+                a: "Id_depto",
+                c: ["Id_emp"],
+                why: "Cada empleado pertenece a un departamento.",
+              },
+              {
+                a: "Nombre_depto",
+                c: ["Id_depto"],
+                alt: [["Id_emp"]],
+                why: "El nombre es del departamento: D1 siempre es Desarrollo.",
+              },
+              {
+                a: "Nombre_proy",
+                c: ["Id_proy"],
+                why: "El nombre es del proyecto.",
+              },
+              {
+                a: "Horas",
+                c: ["Id_emp", "Id_proy"],
+                why: "Son las horas de un empleado EN un proyecto: se necesitan los dos.",
+              },
+            ],
+            fds: [
+              { det: ["Id_emp", "Id_proy"], dep: ["Horas"], type: "completa" },
+              {
+                det: ["Id_emp"],
+                dep: ["Nombre_emp", "Id_depto"],
+                type: "parcial",
+              },
+              { det: ["Id_proy"], dep: ["Nombre_proy"], type: "parcial" },
+              { det: ["Id_depto"], dep: ["Nombre_depto"], type: "transitiva" },
+            ],
+            steps: [
+              {
+                label: "2FN",
+                note: "Se separan las parciales. Fíjate en Empleado: todavía contiene Nombre_depto, que depende de Id_depto (no clave). El paso 2FN no la elimina.",
+                tables: [
+                  {
+                    name: "Empleado",
+                    pk: ["Id_emp"],
+                    cols: ["Id_emp", "Nombre_emp", "Id_depto", "Nombre_depto"],
+                  },
+                  {
+                    name: "Proyecto",
+                    pk: ["Id_proy"],
+                    cols: ["Id_proy", "Nombre_proy"],
+                  },
+                  {
+                    name: "Asignacion",
+                    pk: ["Id_emp", "Id_proy"],
+                    cols: ["Id_emp", "Id_proy", "Horas"],
+                    fk: { Id_emp: "Empleado", Id_proy: "Proyecto" },
+                  },
+                ],
+              },
+              {
+                label: "3FN",
+                note: "Se separa la transitiva: Departamento sale de Empleado, y en Empleado queda Id_depto como FK. Error común: olvidar este paso.",
+                tables: [
+                  {
+                    name: "Departamento",
+                    pk: ["Id_depto"],
+                    cols: ["Id_depto", "Nombre_depto"],
+                  },
+                  {
+                    name: "Empleado",
+                    pk: ["Id_emp"],
+                    cols: ["Id_emp", "Nombre_emp", "Id_depto"],
+                    fk: { Id_depto: "Departamento" },
+                  },
+                  {
+                    name: "Proyecto",
+                    pk: ["Id_proy"],
+                    cols: ["Id_proy", "Nombre_proy"],
+                  },
+                  {
+                    name: "Asignacion",
+                    pk: ["Id_emp", "Id_proy"],
+                    cols: ["Id_emp", "Id_proy", "Horas"],
+                    fk: { Id_emp: "Empleado", Id_proy: "Proyecto" },
+                  },
+                ],
+              },
+            ],
+          },
+          tutoria: {
+            title: "Forma normal de Boyce-Codd: Tutoría",
+            intro:
+              "Qué tutor atiende a cada estudiante en cada curso. Está en 3FN, pero tiene un determinante que no es llave.",
+            rules: [
+              "Un estudiante tiene un solo tutor por curso.",
+              "Cada tutor atiende un solo curso (un curso puede tener varios tutores).",
+            ],
+            table: "Tutoria",
+            attrs: ["Carne", "Curso", "Tutor"],
+            pk: ["Carne", "Curso"],
+            rows: [
+              ["201901", "BD1", "Morales"],
+              ["202002", "BD1", "Morales"],
+              ["202103", "BD1", "Chávez"],
+              ["201901", "Prog1", "Say"],
+              ["202002", "Prog1", "Say"],
+            ],
+            questions: [
+              {
+                a: "Tutor",
+                c: ["Carne", "Curso"],
+                why: "Regla 1: un estudiante tiene un tutor por curso; se necesitan el estudiante y el curso.",
+              },
+              {
+                a: "Curso",
+                key: true,
+                c: ["Tutor"],
+                why: "Regla 2: cada tutor atiende un solo curso. Morales siempre es de BD1.",
+              },
+            ],
+            fds: [
+              { det: ["Carne", "Curso"], dep: ["Tutor"], type: "completa" },
+              { det: ["Tutor"], dep: ["Curso"], type: "fnbc" },
+            ],
+            steps: [
+              {
+                label: "3FN",
+                note: "Curso forma parte de la llave, así que la 3FN (que solo vigila atributos no clave) no objeta Tutor → Curso. La tabla ya está en 3FN.",
+                same: true,
+              },
+              {
+                label: "FNBC",
+                note: "El determinante que no es llave (Tutor) se va con lo que determina a una tabla nueva.",
+                tables: [
+                  {
+                    name: "Tutor_curso",
+                    pk: ["Tutor"],
+                    cols: ["Tutor", "Curso"],
+                  },
+                  {
+                    name: "Asignacion_tutor",
+                    pk: ["Carne", "Tutor"],
+                    cols: ["Carne", "Tutor"],
+                    fk: { Tutor: "Tutor_curso" },
+                  },
+                ],
+              },
+            ],
+          },
+        };
+
+        const DIAG = {
+          nota: "Hay dependencias parciales (Nombre_est, Nombre_curso y Creditos dependen de una parte de la llave): la tabla está en 1FN, pero NO en 2FN.",
+          pedido:
+            "La llave es simple, así que no hay parciales: está en 2FN. Pero Id_cliente → Nombre_cliente, Direccion_cliente es transitiva: NO está en 3FN.",
+          asig: "Tiene dependencias parciales (no está en 2FN) y además una transitiva escondida (tampoco estaría en 3FN). Hay que aplicar los dos pasos.",
+          tutoria:
+            "No hay parciales ni transitivas sobre atributos no clave: está en 3FN. Pero Tutor → Curso tiene un determinante que no es llave candidata: NO está en FNBC.",
+        };
+        const FINAL_FN = {
+          nota: "3FN",
+          pedido: "3FN",
+          asig: "3FN",
+          tutoria: "FNBC",
+        };
+        const TYPE_LABEL = {
+          completa: "completa",
+          parcial: "parcial",
+          transitiva: "transitiva",
+          fnbc: "viola FNBC",
+        };
+        const TYPE_PILL = {
+          completa: "ok",
+          parcial: "warn",
+          transitiva: "bad",
+          fnbc: "violet",
+        };
+
+        // ---------- rendering helpers ----------
+        function tableHTML(name, cols, rows, o = {}) {
+          const pk = o.pk || [],
+            fk = o.fk || {},
+            states = o.states || [],
+            det = o.det || [],
+            tg = o.tg || [];
+          const cls = (c) =>
+            det.includes(c) ? "hc" : tg.includes(c) ? "tg" : "";
+          let h =
+            '<figure class="rel fade' +
+            (o.result ? " is-result" : "") +
+            '"><figcaption>' +
+            esc(name) +
+            '<span class="meta">' +
+            cols.length +
+            " columnas · " +
+            rows.length +
+            " filas · " +
+            cols.length * rows.length +
+            " celdas</span></figcaption>";
+          h +=
+            '<div class="scroll"><table class="t"><thead><tr><th class="mark">#</th>';
+          cols.forEach((c) => {
+            h +=
+              '<th class="' +
+              (pk.includes(c) ? "pk " : "") +
+              cls(c) +
+              '">' +
+              esc(c) +
+              (pk.includes(c) ? '<span class="pkk">PK</span>' : "") +
+              (fk[c] ? '<span class="fk">FK→' + esc(fk[c]) + "</span>" : "") +
+              "</th>";
+          });
+          h += "</tr></thead><tbody>";
+          rows.forEach((r, i) => {
+            h +=
+              '<tr class="' +
+              (states[i] || "") +
+              '"><td class="mark">' +
+              (i + 1) +
+              "</td>" +
+              r
+                .map(
+                  (v, ci) =>
+                    '<td class="' + cls(cols[ci]) + '">' + esc(v) + "</td>",
+                )
+                .join("") +
+              "</tr>";
+          });
+          return h + "</tbody></table></div></figure>";
+        }
+        function projectRows(c, cols) {
+          const idx = cols.map((x) => c.attrs.indexOf(x)),
+            seen = new Set(),
+            out = [];
+          c.rows.forEach((r) => {
+            const t = idx.map((i) => r[i]),
+              k = JSON.stringify(t);
+            if (!seen.has(k)) {
+              seen.add(k);
+              out.push(t);
+            }
+          });
+          return out;
+        }
+        function naturalJoin(A, B) {
+          const common = A.cols.filter((x) => B.cols.includes(x)),
+            bOnly = B.cols.filter((x) => !A.cols.includes(x)),
+            rows = [];
+          A.rows.forEach((ra) =>
+            B.rows.forEach((rb) => {
+              if (
+                common.every(
+                  (c) => ra[A.cols.indexOf(c)] === rb[B.cols.indexOf(c)],
+                )
+              )
+                rows.push(ra.concat(bOnly.map((c) => rb[B.cols.indexOf(c)])));
+            }),
+          );
+          return { cols: A.cols.concat(bOnly), rows };
+        }
+        function svgDiagram(key, c, shownAttrs, colored) {
+          const n = c.attrs.length,
+            W = 1000,
+            gap = 10,
+            bw = (W - 40 - gap * (n - 1)) / n,
+            bh = 46;
+          const fds = c.fds
+            .map((fd, k) => ({
+              fd,
+              k,
+              dep: fd.dep.filter((a) => shownAttrs.includes(a)),
+            }))
+            .filter((x) => x.dep.length);
+          const levels = c.fds.length,
+            levelH = 30,
+            by = 20 + levels * levelH + 30,
+            H = by + bh + 14;
+          const cx = (a) => 20 + c.attrs.indexOf(a) * (bw + gap) + bw / 2;
+          let s =
+            '<svg viewBox="0 0 ' +
+            W +
+            " " +
+            H +
+            '" role="img" aria-label="Diagrama de dependencias de ' +
+            esc(c.table) +
+            '"><defs>';
+          ["completa", "parcial", "transitiva", "fnbc", "neutral"].forEach(
+            (t) => {
+              s +=
+                '<marker id="m-' +
+                key +
+                "-" +
+                t +
+                '" class="fd-' +
+                t +
+                '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>';
+            },
+          );
+          s += "</defs>";
+          fds.forEach(({ fd, k, dep }) => {
+            const t = colored.includes(k) ? fd.type : "neutral",
+              off = (k - (levels - 1) / 2) * 9,
+              y = by - 24 - k * levelH;
+            const xs = fd.det.concat(dep).map((a) => cx(a) + off);
+            s +=
+              '<g class="fd-' +
+              t +
+              '" fill="none" stroke="currentColor" stroke-width="3">';
+            fd.det.forEach((a) => {
+              s +=
+                '<line x1="' +
+                (cx(a) + off) +
+                '" y1="' +
+                by +
+                '" x2="' +
+                (cx(a) + off) +
+                '" y2="' +
+                y +
+                '"/>';
+            });
+            s +=
+              '<line x1="' +
+              Math.min(...xs) +
+              '" y1="' +
+              y +
+              '" x2="' +
+              Math.max(...xs) +
+              '" y2="' +
+              y +
+              '"/>';
+            dep.forEach((a) => {
+              s +=
+                '<line x1="' +
+                (cx(a) + off) +
+                '" y1="' +
+                y +
+                '" x2="' +
+                (cx(a) + off) +
+                '" y2="' +
+                (by - 3) +
+                '" marker-end="url(#m-' +
+                key +
+                "-" +
+                t +
+                ')"/>';
+            });
+            s += "</g>";
+          });
+          c.attrs.forEach((a, i) => {
+            const x = 20 + i * (bw + gap),
+              pk = c.pk.includes(a);
+            s +=
+              '<rect x="' +
+              x +
+              '" y="' +
+              by +
+              '" width="' +
+              bw +
+              '" height="' +
+              bh +
+              '" rx="6" fill="' +
+              (pk ? "var(--accent)" : "var(--surface)") +
+              '" stroke="var(--accent)" stroke-width="2"/>';
+            s +=
+              '<text x="' +
+              (x + bw / 2) +
+              '" y="' +
+              (by + bh / 2 + 5) +
+              '" text-anchor="middle" font-family="JetBrains Mono, Consolas, monospace" font-size="' +
+              (bw < 120 ? 12 : 14) +
+              '" font-weight="700" fill="' +
+              (pk ? "var(--accent-ink)" : "var(--ink)") +
+              '"' +
+              (pk ? ' text-decoration="underline"' : "") +
+              ">" +
+              esc(a) +
+              "</text>";
+          });
+          s += "</svg>";
+          let legend = "";
+          if (colored.length)
+            legend =
+              '<div class="legend"><span class="fd-completa"><i></i>completa</span><span class="fd-parcial"><i></i>parcial</span><span class="fd-transitiva"><i></i>transitiva</span>' +
+              (c.fds.some((f) => f.type === "fnbc")
+                ? '<span class="fd-fnbc"><i></i>viola FNBC</span>'
+                : "") +
+              '<span class="fd-neutral"><i></i>sin clasificar</span></div>';
+          return (
+            '<figure class="rel fade" style="width:100%"><figcaption>Diagrama de dependencias</figcaption><div class="diagram">' +
+            s +
+            "</div>" +
+            legend +
+            "</figure>"
+          );
+        }
+        function schemaHTML(tables) {
+          return (
+            '<div class="schema">' +
+            tables
+              .map(
+                (t) =>
+                  "<div>" +
+                  esc(t.name) +
+                  "(" +
+                  t.cols
+                    .map(
+                      (col) =>
+                        (t.pk.includes(col)
+                          ? "<u>" + esc(col) + "</u>"
+                          : esc(col)) +
+                        (t.fk && t.fk[col]
+                          ? '<span class="fkx"> FK→' +
+                            esc(t.fk[col]) +
+                            "</span>"
+                          : ""),
+                    )
+                    .join(", ") +
+                  ")</div>",
+              )
+              .join("") +
+            "</div>"
+          );
+        }
+        function stats(pairs) {
+          return (
+            '<div class="stats">' +
+            pairs
+              .map(
+                ([k, v]) =>
+                  '<span class="stat">' + k + " <b>" + v + "</b></span>",
+              )
+              .join("") +
+            "</div>"
+          );
+        }
+        function placeholderCard() {
+          return '<div class="card"><span class="k">Resultado</span><p class="note">Avanza con <strong>Paso siguiente</strong> o salta al final con <strong>Ver resultado</strong>.</p></div>';
+        }
+
+        // ---------- generic stepper (same controls as the algebra page) ----------
+        function mountStepper(root, compute) {
+          const bar = root.querySelector(".stepbar.main"),
+            stageEl = root.querySelector(".stage-col"),
+            logEl = root.querySelector(".log"),
+            finEl = root.querySelector(".final");
+          bar.innerHTML =
+            '<button class="btn primary" data-a="next">Paso siguiente</button><button class="btn" data-a="all">Ver resultado</button><button class="btn" data-a="reset">Reiniciar</button><span class="stepcount"></span>';
+          const snaps = compute();
+          let i = 0;
+          function render() {
+            const s = snaps[i];
+            stageEl.innerHTML = s.stage;
+            logEl.innerHTML =
+              "<h3>Paso a paso</h3><ol>" +
+              snaps
+                .slice(0, i + 1)
+                .map((x) => "<li>" + x.msg + "</li>")
+                .join("") +
+              "</ol>";
+            const ol = logEl.querySelector("ol");
+            ol.scrollTop = ol.scrollHeight;
+            finEl.innerHTML = s.final || placeholderCard();
+            bar.querySelector('[data-a="next"]').disabled =
+              i >= snaps.length - 1;
+            bar.querySelector('[data-a="all"]').disabled =
+              i >= snaps.length - 1;
+            bar.querySelector(".stepcount").textContent =
+              "paso " + (i + 1) + " de " + snaps.length;
+          }
+          bar.addEventListener("click", (e) => {
+            const b = e.target.closest("button");
+            if (!b) return;
+            if (b.dataset.a === "next") i = Math.min(i + 1, snaps.length - 1);
+            if (b.dataset.a === "all") i = snaps.length - 1;
+            if (b.dataset.a === "reset") i = 0;
+            render();
+          });
+          render();
+        }
+        const SHELL =
+          '<div class="stepbar main"></div><div class="stage-col"></div><div class="duo"><div class="log"></div><div class="final"></div></div>';
+
+        // ===================== 1FN =====================
+        (function () {
+          const root = $("#p-fn1");
+          root.innerHTML =
+            '<div class="intro"><h2>Primera forma normal: un valor por celda</h2><p>Una tabla está en 1FN si cada celda tiene un solo valor, no tiene grupos repetitivos y tiene llave primaria. Mira dos diseños incorrectos y cómo se corrigen.</p></div>' +
+            SHELL;
+          const T1 = [
+            ["201901", "Ana López", ["5555-1111", "4444-2222"]],
+            ["202002", "Luis Pérez", ["3333-0000"]],
+            ["202103", "María Cux", ["7777-1212", "4141-0909", "5050-6060"]],
+          ];
+          const multi = T1.map((r) => [r[0], r[1], r[2].join(", ")]);
+          const group = T1.map((r) => [
+            r[0],
+            r[1],
+            r[2][0] || "",
+            r[2][1] || "",
+            r[2][2] || "",
+          ]);
+          const est = T1.map((r) => [r[0], r[1]]),
+            tel = [];
+          T1.forEach((r) => r[2].forEach((t) => tel.push([r[0], t])));
+          const tabs = [
+            { name: "Estudiante", pk: ["Carne"], cols: ["Carne", "Nombre"] },
+            {
+              name: "Telefono_est",
+              pk: ["Carne", "Telefono"],
+              cols: ["Carne", "Telefono"],
+              fk: { Carne: "Estudiante" },
+            },
+          ];
+          const J = naturalJoin(
+            { cols: ["Carne", "Nombre"], rows: est },
+            { cols: ["Carne", "Telefono"], rows: tel },
+          );
+          mountStepper(root, () => [
+            {
+              stage: tableHTML(
+                "Estudiante (diseño A)",
+                ["Carne", "Nombre", "Telefonos"],
+                multi,
+                { pk: ["Carne"] },
+              ),
+              msg: "Diseño A: cada estudiante guarda sus teléfonos en una sola columna, <code>Telefonos</code>.",
+            },
+            {
+              stage: tableHTML(
+                "Estudiante (diseño A)",
+                ["Carne", "Nombre", "Telefonos"],
+                multi,
+                { pk: ["Carne"], tg: ["Telefonos"], states: ["ce", "", "ce"] },
+              ),
+              msg: 'Las filas 1 y 3 tienen <strong>varios valores en una celda</strong>. Para saber quién tiene el 4444-2222 habría que buscar texto dentro de la celda: <span class="pill bad">no está en 1FN</span>',
+            },
+            {
+              stage: tableHTML(
+                "Estudiante (diseño B)",
+                ["Carne", "Nombre", "Telefono1", "Telefono2", "Telefono3"],
+                group,
+                { pk: ["Carne"], tg: ["Telefono1", "Telefono2", "Telefono3"] },
+              ),
+              msg: 'Diseño B: un teléfono por columna (Telefono1, 2, 3). Cada celda tiene un valor, pero es un <strong>grupo repetitivo</strong>: Luis deja dos columnas vacías y nadie puede tener 4 teléfonos. <span class="pill bad">tampoco está en 1FN</span>',
+            },
+            {
+              stage:
+                '<div class="stage">' +
+                tableHTML("Estudiante", ["Carne", "Nombre"], est, {
+                  pk: ["Carne"],
+                  result: true,
+                }) +
+                tableHTML("Telefono_est", ["Carne", "Telefono"], tel, {
+                  pk: ["Carne", "Telefono"],
+                  fk: { Carne: "Estudiante" },
+                  result: true,
+                }) +
+                "</div>",
+              msg: 'Solución: el atributo multivaluado se va a una tabla nueva, <code>Telefono_est</code>, con <strong>una fila por teléfono</strong>. PK = (Carne, Telefono); Carne es FK hacia Estudiante. <span class="pill ok">1FN</span>',
+            },
+            {
+              stage:
+                '<div class="stage">' +
+                tableHTML("Estudiante ⋈ Telefono_est", J.cols, J.rows, {
+                  pk: ["Carne"],
+                  result: true,
+                }) +
+                "</div>",
+              msg: "Verificación: la reunión <code>Estudiante ⋈ Telefono_est</code> vuelve a mostrar cada estudiante con cada uno de sus teléfonos. No se perdió nada.",
+              final:
+                '<div class="card fade"><span class="k">Resultado en 1FN</span>' +
+                schemaHTML(tabs) +
+                '<p class="note good">Cada celda tiene un valor, no hay columnas vacías y no hay límite de teléfonos. Es la misma solución que en la Unidad 4 para atributos multivaluados.</p></div>',
+            },
+          ]);
+        })();
+
+        // ===================== CASES =====================
+        function buildCase(key) {
+          const c = CASES[key],
+            root = $("#p-" + key);
+          let h =
+            '<div class="intro"><h2>' +
+            esc(c.title) +
+            "</h2><p>" +
+            esc(c.intro) +
+            "</p></div>";
+          if (c.rules)
+            h +=
+              '<div class="rules"><span style="font-weight:700">Reglas del negocio</span>' +
+              c.rules
+                .map(
+                  (r, i) =>
+                    "<span><b>Regla " + (i + 1) + ":</b> " + esc(r) + "</span>",
+                )
+                .join("") +
+              "</div>";
+          h +=
+            SHELL +
+            '<details class="practice"><summary>Practica tú: encuentra y clasifica las dependencias sin ver la respuesta</summary><div class="pr"></div></details>';
+          root.innerHTML = h;
+
+          const rowsWhere = (pred) =>
+            c.rows.map((r, i) => (pred(r) ? i : -1)).filter((i) => i >= 0);
+          const val = (r, a) => r[c.attrs.indexOf(a)];
+          function confirmPair(det) {
+            // two rows sharing det values
+            for (let i = 0; i < c.rows.length; i++)
+              for (let j = i + 1; j < c.rows.length; j++)
+                if (det.every((d) => val(c.rows[i], d) === val(c.rows[j], d)))
+                  return [i, j];
+            return null;
+          }
+          function counterPair(det, a) {
+            for (let i = 0; i < c.rows.length; i++)
+              for (let j = i + 1; j < c.rows.length; j++)
+                if (
+                  det.every((d) => val(c.rows[i], d) === val(c.rows[j], d)) &&
+                  val(c.rows[i], a) !== val(c.rows[j], a)
+                )
+                  return [i, j];
+            return null;
+          }
+          const base = (o) =>
+            tableHTML(c.table, c.attrs, c.rows, Object.assign({ pk: c.pk }, o));
+          const states2 = (pair, st) =>
+            c.rows.map((_, i) => (pair && pair.includes(i) ? st : ""));
+
+          function compute() {
+            const snaps = [],
+              shown = [],
+              colored = [];
+            const view = (tableOpts) =>
+              base(tableOpts) +
+              svgDiagram(key, c, shown.slice(), colored.slice());
+            snaps.push({
+              stage: base({}),
+              msg:
+                "Paso 1 · La tabla <strong>" +
+                esc(c.table) +
+                "</strong> tiene como llave primaria <code>(" +
+                list(c.pk) +
+                ")</code>" +
+                (c.pk.length > 1
+                  ? ", una llave <strong>compuesta</strong>"
+                  : ", una llave <strong>simple</strong>") +
+                ". Observa qué datos se repiten.",
+            });
+            // questions
+            c.questions.forEach((q) => {
+              shown.push(q.a);
+              const pair = confirmPair(q.c);
+              let m =
+                "Paso 2 · <strong>¿Qué necesito conocer para saber " +
+                esc(q.a) +
+                "?</strong> " +
+                (q.c.length > 1
+                  ? "Los dos juntos: <code>" + list(q.c) + "</code>."
+                  : "Solo <code>" + q.c[0] + "</code>.") +
+                " " +
+                esc(q.why);
+              if (pair)
+                m +=
+                  " Filas " +
+                  (pair[0] + 1) +
+                  " y " +
+                  (pair[1] + 1) +
+                  ": mismo " +
+                  esc(list(q.c)) +
+                  " → mismo " +
+                  esc(q.a) +
+                  " (" +
+                  esc(val(c.rows[pair[0]], q.a)) +
+                  ").";
+              m +=
+                ' <span class="pill ok">' +
+                esc(list(q.c)) +
+                " → " +
+                esc(q.a) +
+                "</span>";
+              snaps.push({
+                stage: view({
+                  det: q.c,
+                  tg: [q.a],
+                  states: states2(pair, "ok"),
+                }),
+                msg: m,
+              });
+              if (q.c.length > 1)
+                q.c.forEach((d) => {
+                  const ce = counterPair([d], q.a);
+                  if (ce)
+                    snaps.push({
+                      stage: view({
+                        det: [d],
+                        tg: [q.a],
+                        states: states2(ce, "ce"),
+                      }),
+                      msg:
+                        "¿Y con solo <code>" +
+                        d +
+                        "</code>? No alcanza: las filas " +
+                        (ce[0] + 1) +
+                        " y " +
+                        (ce[1] + 1) +
+                        " tienen el mismo " +
+                        d +
+                        " (" +
+                        esc(val(c.rows[ce[0]], d)) +
+                        ") pero distinto " +
+                        esc(q.a) +
+                        " (" +
+                        esc(val(c.rows[ce[0]], q.a)) +
+                        " y " +
+                        esc(val(c.rows[ce[1]], q.a)) +
+                        ").",
+                    });
+                });
+              (q.alt || []).forEach((al) => {
+                snaps.push({
+                  stage: view({ det: al, tg: [q.a] }),
+                  msg:
+                    "Ojo: <code>" +
+                    list(al) +
+                    "</code> también determina " +
+                    esc(q.a) +
+                    ", pero solo <strong>a través de</strong> <code>" +
+                    list(q.c) +
+                    "</code>. El determinante directo es " +
+                    list(q.c) +
+                    ". Esa cadena es la que vamos a llamar transitiva.",
+                });
+              });
+            });
+            snaps.push({
+              stage: svgDiagram(key, c, shown.slice(), []),
+              msg: "Paso 3 · Con esas respuestas queda completo el <strong>diagrama de dependencias</strong>: cada flecha sale del determinante y llega a lo que determina.",
+            });
+            // classification
+            c.fds.forEach((fd, k) => {
+              colored.push(k);
+              let why;
+              if (fd.type === "completa")
+                why =
+                  c.pk.length > 1 && setEq(fd.det, c.pk)
+                    ? "Depende de TODA la llave (" + list(c.pk) + ")."
+                    : "Depende directamente de la llave.";
+              if (fd.type === "parcial")
+                why =
+                  "<code>" +
+                  list(fd.det) +
+                  "</code> es solo una PARTE de la llave (" +
+                  list(c.pk) +
+                  ").";
+              if (fd.type === "transitiva")
+                why =
+                  "<code>" +
+                  list(fd.det) +
+                  "</code> NO es llave: " +
+                  list(c.pk) +
+                  " → " +
+                  list(fd.det) +
+                  " → " +
+                  list(fd.dep) +
+                  ".";
+              if (fd.type === "fnbc")
+                why =
+                  "<code>" +
+                  list(fd.det) +
+                  "</code> no es llave candidata, pero determina un atributo que forma parte de la llave.";
+              snaps.push({
+                stage: svgDiagram(key, c, shown.slice(), colored.slice()),
+                msg:
+                  "Clasificación · <code>" +
+                  list(fd.det) +
+                  " → " +
+                  list(fd.dep) +
+                  '</code> es <span class="pill ' +
+                  TYPE_PILL[fd.type] +
+                  '">' +
+                  TYPE_LABEL[fd.type] +
+                  "</span> " +
+                  why,
+              });
+            });
+            snaps.push({
+              stage: svgDiagram(key, c, shown.slice(), colored.slice()),
+              msg: "Diagnóstico · " + esc(DIAG[key]),
+            });
+            // decomposition
+            let last = null;
+            c.steps.forEach((st) => {
+              let stage;
+              if (st.same) stage = '<div class="stage">' + base({}) + "</div>";
+              else {
+                last = st.tables;
+                stage =
+                  '<div class="stage">' +
+                  st.tables
+                    .map((t) =>
+                      tableHTML(t.name, t.cols, projectRows(c, t.cols), {
+                        pk: t.pk,
+                        fk: t.fk,
+                        result: true,
+                      }),
+                    )
+                    .join("") +
+                  "</div>";
+              }
+              snaps.push({
+                stage:
+                  svgDiagram(key, c, shown.slice(), colored.slice()) + stage,
+                msg:
+                  "Llevar a <strong>" +
+                  st.label +
+                  "</strong> · " +
+                  esc(st.note) +
+                  (st.same
+                    ? ' <span class="pill warn">sin cambios</span>'
+                    : ' <span class="pill ok">' +
+                      st.tables.length +
+                      " tablas</span>"),
+              });
+            });
+            // verification
+            const rels = last.map((t) => ({
+              cols: t.cols,
+              rows: projectRows(c, t.cols),
+            }));
+            let J = rels[0];
+            for (let k = 1; k < rels.length; k++) J = naturalJoin(J, rels[k]);
+            const re = J.rows.map((r) =>
+              c.attrs.map((a) => r[J.cols.indexOf(a)]),
+            );
+            const o = new Set(c.rows.map((r) => JSON.stringify(r))),
+              jn = new Set(re.map((r) => JSON.stringify(r)));
+            const same = o.size === jn.size && [...o].every((x) => jn.has(x));
+            const before = c.attrs.length * c.rows.length,
+              after = rels.reduce(
+                (s, r) => s + r.cols.length * r.rows.length,
+                0,
+              );
+            let extra = "";
+            if (key === "tutoria")
+              extra =
+                '<p class="note warn"><strong>El costo de la FNBC:</strong> la regla 1 ya no la garantiza ninguna PK. Nada impide insertar (201901, Chávez) en Asignacion_tutor, y 201901 quedaría con dos tutores de BD1. Por eso a veces se acepta quedarse en 3FN.</p>';
+            snaps.push({
+              stage:
+                '<div class="stage">' +
+                tableHTML(last.map((t) => t.name).join(" ⋈ "), c.attrs, re, {
+                  pk: c.pk,
+                  result: true,
+                }) +
+                "</div>",
+              msg:
+                "Verificación · La reunión natural de las tablas finales da " +
+                re.length +
+                " filas: " +
+                (same
+                  ? "exactamente las " +
+                    c.rows.length +
+                    ' originales. <span class="pill ok">sin pérdida</span>'
+                  : "no coincide con la original."),
+              final:
+                '<div class="card fade"><span class="k">Resultado en ' +
+                FINAL_FN[key] +
+                "</span>" +
+                schemaHTML(last) +
+                stats([
+                  ["tablas", last.length],
+                  ["celdas antes", before],
+                  ["celdas después", after],
+                ]) +
+                (after < before
+                  ? '<p class="note good">Cada dato se guarda una sola vez y las anomalías desaparecen. Con más filas, la diferencia de celdas crece.</p>'
+                  : '<p class="note">Con tan pocas filas el número de celdas casi no cambia. Lo importante es que ahora cada dato se guarda una sola vez, y con más filas la diferencia crece.</p>') +
+                extra +
+                "</div>",
+            });
+            return snaps;
+          }
+          mountStepper(root, compute);
+
+          // ---------- practice ----------
+          const pr = root.querySelector(".pr");
+          let p =
+            '<p class="note">Para cada atributo, marca el conjunto MÍNIMO de atributos que basta conocer para saber su valor. Después clasifica cada dependencia.</p><div class="qlist">';
+          c.questions.forEach((q, qi) => {
+            p +=
+              '<div class="q" data-q="' +
+              qi +
+              '"><div class="qa">' +
+              esc(q.a) +
+              '</div><div class="opts">' +
+              c.attrs
+                .filter((x) => x !== q.a)
+                .map(
+                  (o) =>
+                    '<label class="chk"><input type="checkbox" id="' +
+                    key +
+                    "-q" +
+                    qi +
+                    "-" +
+                    o +
+                    '" value="' +
+                    o +
+                    '"> ' +
+                    esc(o) +
+                    "</label>",
+                )
+                .join("") +
+              '</div><div class="fb"></div></div>';
+          });
+          p +=
+            '</div><div class="stepbar"><button class="btn primary" data-p="check">Comprobar</button></div><div class="qlist" style="margin-top:12px">';
+          c.fds.forEach((fd, i) => {
+            p +=
+              '<div class="fdq" data-fd="' +
+              i +
+              '"><span class="f">' +
+              esc(list(fd.det)) +
+              " → " +
+              esc(list(fd.dep)) +
+              '</span><select id="' +
+              key +
+              "-cls-" +
+              i +
+              '" aria-label="Tipo"><option value="">¿qué tipo es?</option><option value="completa">completa</option><option value="parcial">parcial</option><option value="transitiva">transitiva</option>' +
+              (c.fds.some((f) => f.type === "fnbc")
+                ? '<option value="fnbc">viola FNBC</option>'
+                : "") +
+              '</select><div class="fb"></div></div>';
+          });
+          p +=
+            '</div><div class="stepbar"><button class="btn primary" data-p="cls">Comprobar clasificación</button></div>';
+          pr.innerHTML = p;
+          function judge(q, D) {
+            if (!D.length) return ["bad", "Marca al menos un atributo."];
+            if (setEq(D, q.c))
+              return [
+                "good",
+                "✔ Correcto: <b>" + list(D) + " → " + q.a + "</b>.",
+              ];
+            const ce = counterPair(D, q.a);
+            if (ce)
+              return [
+                "bad",
+                "✘ Con <b>" +
+                  list(D) +
+                  "</b> no alcanza: las filas " +
+                  (ce[0] + 1) +
+                  " y " +
+                  (ce[1] + 1) +
+                  " tienen el mismo " +
+                  esc(list(D)) +
+                  " pero distinto valor de " +
+                  esc(q.a) +
+                  ".",
+              ];
+            if (isSub(q.c, D))
+              return [
+                "warn",
+                "Casi: sobra <b>" +
+                  list(D.filter((x) => !q.c.includes(x))) +
+                  "</b>. Busca el conjunto mínimo.",
+              ];
+            if ((q.alt || []).some((al) => setEq(al, D)))
+              return [
+                "warn",
+                "Lo determina, pero a través de otro atributo. Busca el determinante directo.",
+              ];
+            return [
+              "bad",
+              "✘ Los datos no lo contradicen, pero en la realidad no basta. Piensa: ¿de quién es este dato?",
+            ];
+          }
+          pr.addEventListener("click", (e) => {
+            const b = e.target.closest("button[data-p]");
+            if (!b) return;
+            if (b.dataset.p === "check")
+              c.questions.forEach((q, qi) => {
+                const D = [
+                  ...pr.querySelectorAll('[data-q="' + qi + '"] input:checked'),
+                ].map((x) => x.value);
+                const [cls, msg] = judge(q, D),
+                  fb = pr.querySelector('[data-q="' + qi + '"] .fb');
+                fb.className = "fb " + cls;
+                fb.innerHTML = msg;
+              });
+            if (b.dataset.p === "cls")
+              c.fds.forEach((fd, i) => {
+                const v = $("#" + key + "-cls-" + i).value,
+                  fb = pr.querySelector('[data-fd="' + i + '"] .fb');
+                if (!v) {
+                  fb.className = "fb bad";
+                  fb.textContent = "Elige un tipo.";
+                } else if (v === fd.type) {
+                  fb.className = "fb good";
+                  fb.textContent = "✔ Correcto.";
+                } else {
+                  fb.className = "fb bad";
+                  fb.textContent =
+                    "✘ No es " +
+                    TYPE_LABEL[v] +
+                    ". Revisa si el determinante es la llave completa, una parte de ella o un atributo no clave.";
+                }
+              });
+          });
+        }
+        Object.keys(CASES).forEach(buildCase);
+
+        // ---------- tabs ----------
+        const TABS = ["fn1", "nota", "pedido", "asig", "tutoria"];
+        function show(t) {
+          if (!TABS.includes(t)) t = "fn1";
+          TABS.forEach((x) => {
+            $("#p-" + x).hidden = x !== t;
+            $("#tab-" + x).setAttribute(
+              "aria-selected",
+              x === t ? "true" : "false",
+            );
+          });
+          try {
+            localStorage.setItem("norm-tab", t);
+          } catch (e) {}
+        }
+        document
+          .querySelectorAll(".tab")
+          .forEach((b) =>
+            b.addEventListener("click", () => show(b.dataset.tab)),
+          );
+        let start = (location.hash || "").slice(1);
+        if (!TABS.includes(start)) {
+          try {
+            start = localStorage.getItem("norm-tab") || "fn1";
+          } catch (e) {
+            start = "fn1";
+          }
+        }
+        show(start);
+        window.addEventListener("hashchange", () => {
+          const t = location.hash.slice(1);
+          if (TABS.includes(t)) show(t);
+        });
+      })();
+    </script>
+  </body>
+</html>
