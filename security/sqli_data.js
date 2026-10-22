@@ -1,0 +1,77 @@
+// Contenido del recorrido — mismos ejemplos del material original del curso (nivel de libro de texto).
+window.SQLI = {
+  tabla: {
+    cols: ["id", "nombre", "clave (hash bcrypt)", "clave real (demo)"],
+    filas: [
+      ["1", "Ana López", "$2a$06$zbvPJua…SySdHFq0K", "leer2026"],
+      ["2", "Luis Pérez", "$2a$06$W1To8I5…GAlX.Kc2", "biblioteca"],
+      ["3", "María García", "$2a$06$O5ML9IU…6ky/fMAq", "quetzal"]
+    ]
+  },
+  pasos: [
+    { tipo: "base", etq: "Inicio", titulo: "La base de datos de la biblioteca",
+      rel: "Tenemos una tabla <strong>lector</strong> con el nombre y la contraseña guardada como <em>hash</em> bcrypt, nunca en texto plano. Una aplicación web permite buscar lectores por su nombre. Vamos a ver qué cambia según cómo el programa arme esa consulta.",
+      res: { clase: "neutro", cab: "Tabla lector", tipo: "tabla", cols: ["id", "nombre", "clave (hash bcrypt)"],
+        filas: [["1", "Ana López", "$2a$06$zbvPJua…SySdHFq0K"], ["2", "Luis Pérez", "$2a$06$W1To8I5…GAlX.Kc2"], ["3", "María García", "$2a$06$O5ML9IU…6ky/fMAq"]] } },
+    { tipo: "normal", etq: "Uso normal", titulo: "Una búsqueda común y corriente",
+      rel: "El usuario escribe <strong>Ana López</strong> en el buscador. El programa arma el SQL <strong>pegando</strong> ese texto entre comillas. Como el dato es un nombre normal, todo funciona bien.",
+      sql: "SELECT id, nombre FROM lector\nWHERE nombre = '<span class=\"dato\">Ana López</span>'",
+      res: { clase: "bueno", cab: "1 fila — correcto", tipo: "tabla", cols: ["id", "nombre"], filas: [["1", "Ana López"]] },
+      nota: "Lo resaltado en amarillo es el <b>dato</b> que escribió el usuario. Aquí la base lo trata como un simple nombre. El problema empieza cuando el dato deja de comportarse como dato." },
+    { tipo: "ataque", etq: "El problema", titulo: "Cuando el dato se vuelve instrucción",
+      rel: "El método es viejo y conocido: en lugar de un nombre, se escribe un texto que incluye una <strong>comilla</strong>. Esa comilla cierra la del programa, y lo que sigue ya no se lee como dato, sino como <em>parte de la instrucción</em>. La base pierde la frontera entre el dato y el código.",
+      sql: "SELECT id, nombre FROM lector\nWHERE nombre = '<span class=\"cod\">'  …aquí seguiría código…</span>'",
+      res: { clase: "peligro", cab: "La base ya no distingue dato de código", tipo: "vacio",
+        texto: "A partir de aquí, lo que el usuario escriba después de la comilla la base lo ejecuta como si lo hubiera escrito el programador." },
+      nota: "<b>La causa, en una frase:</b> el programa <code>concatenó</code> texto del usuario dentro de la instrucción SQL. Ese es el origen de toda inyección SQL." },
+    { tipo: "ataque", etq: "Consecuencia 1", titulo: "Ver filas que no debería",
+      rel: "Si el texto cierra la comilla y agrega una condición que <strong>siempre es verdadera</strong>, el <code>WHERE</code> deja de filtrar y la consulta devuelve toda la tabla.",
+      sql: "SELECT id, nombre FROM lector\nWHERE nombre = '<span class=\"cod\">' OR 1=1</span>'",
+      res: { clase: "peligro", cab: "3 filas — se filtró toda la tabla", tipo: "tabla", cols: ["id", "nombre"],
+        filas: [["1", "Ana López"], ["2", "Luis Pérez"], ["3", "María García"]] },
+      nota: "<code>1=1</code> es verdadero para cada fila, así que el <code>WHERE</code> las deja pasar todas. Es el ejemplo clásico de libro de texto de por qué concatenar es peligroso." },
+    { tipo: "ataque", etq: "Consecuencia 2", titulo: "Saltarse la verificación de la contraseña",
+      rel: "En un inicio de sesión, si el texto del nombre termina la instrucción con un <strong>comentario</strong> (<code>--</code>), todo lo que venía después, incluida la comprobación de la contraseña, queda ignorado. La base verifica solo el nombre.",
+      sql: "SELECT id FROM lector\nWHERE nombre = '<span class=\"cod\">Ana López' --</span><span class=\"com\">' AND clave = crypt('clave', clave)</span>",
+      res: { clase: "peligro", cab: "acceso concedido sin la contraseña", tipo: "json",
+        texto: '{ "acceso": true, "lector": { "id": 1, "nombre": "Ana López" } }' },
+      nota: "Todo lo tachado va después de <code>--</code>, así que la base lo trata como comentario y nunca comprueba la clave." },
+    { tipo: "defensa", etq: "La defensa", titulo: "Consultas parametrizadas",
+      rel: "La solución no es revisar el texto buscando comillas: es <strong>no pegar</strong> el texto dentro del SQL. El valor viaja <strong>por separado</strong>, en el parámetro <strong>$1</strong>. La base recibe por un lado la instrucción y por otro el dato, y nunca interpreta el dato como código.",
+      sql: "SELECT id, nombre FROM lector WHERE nombre = <span class=\"par\">$1</span>\n<span class=\"cm\">-- $1 = (el texto del usuario, sea cual sea)</span>",
+      res: { clase: "bueno", cab: "0 filas — el truco ya no funciona", tipo: "vacio",
+        texto: "La base buscó, literalmente, a un lector cuyo nombre fuera el texto completo que se escribió, comillas incluidas. No existe, así que no devuelve nada." },
+      nota: "<b>Regla de oro:</b> en un ORM como TypeORM, el repositorio y el QueryBuilder ya parametrizan por ti. El riesgo aparece solo cuando se arma el SQL concatenando texto a mano." },
+    { tipo: "defensa", etq: "La defensa", titulo: "El inicio de sesión seguro rechaza el truco",
+      rel: "El mismo login, pero parametrizado. El texto <strong>Ana López' --</strong> se trata como un nombre completo, con comillas y guiones incluidos. No existe ningún lector con ese nombre, así que no hay acceso.",
+      sql: "SELECT id FROM lector\nWHERE nombre = <span class=\"par\">$1</span> AND clave = crypt(<span class=\"par\">$2</span>, clave)\n<span class=\"cm\">-- $1 = \"Ana López' --\"   $2 = \"clave\"</span>",
+      res: { clase: "bueno", cab: "acceso denegado — rechazado", tipo: "json", texto: '{ "acceso": false, "lector": null }' },
+      nota: "El <code>--</code> ya no comenta nada: viaja dentro del dato, no dentro de la instrucción." },
+    { tipo: "auditoria", etq: "Capa extra", titulo: "Dejar rastro: la auditoría",
+      rel: "Aunque algo logre modificar datos, la <strong>auditoría</strong> deja constancia. Un <em>trigger</em> sobre la tabla guarda en una bitácora quién cambió qué y cuándo, con el valor anterior y el nuevo. El trigger se ejecuta solo: la aplicación no puede olvidarse de auditar.",
+      sql: "SELECT operacion, usuario, fecha, antes, despues\nFROM auditoria ORDER BY id DESC;",
+      res: { clase: "neutro", cab: "La bitácora registró el cambio", tipo: "tabla", cols: ["operacion", "usuario", "antes → despues"],
+        filas: [["UPDATE", "biblioteca_app", "existencias: 2 → 7"], ["UPDATE", "biblioteca_app", "existencias: 1 → 0"]] },
+      nota: "<b>Punto clave:</b> si la aplicación se conecta con un usuario que solo tiene permiso de <code>SELECT</code>, varios de estos cambios habrían fallado antes de llegar aquí. Es el principio de <b>privilegios mínimos</b>." },
+    { tipo: "base", etq: "Cierre", titulo: "Lo que hay que recordar",
+      rel: "La seguridad no es un módulo aparte: se decide en <strong>cada consulta</strong> que escribes.",
+      lista: [
+        "La inyección ocurre al <b>concatenar</b> datos del usuario dentro del SQL.",
+        "La defensa principal son las <b>consultas parametrizadas</b> (<code>$1</code>): el dato viaja separado del código.",
+        "Suma capas: <b>validar la entrada</b>, <b>privilegios mínimos</b>, contraseñas con <b>bcrypt</b> y <b>auditoría</b> con triggers.",
+        "Regla de oro: <b>nunca</b> pegues texto del usuario dentro de una instrucción SQL."
+      ] }
+  ],
+  glosario: [
+    ["Inyección SQL", "Hacer que un texto escrito por el usuario se ejecute como parte de la instrucción SQL, en lugar de tratarse como un simple dato."],
+    ["Concatenar", "Pegar el texto del usuario dentro de la cadena del SQL (<code>\"... WHERE nombre = '\" + entrada + \"'\"</code>). Es el origen del problema."],
+    ["Consulta parametrizada", "Enviar la instrucción con marcadores (<code>$1</code>, <code>$2</code>) y los valores por separado. La base nunca interpreta el valor como código."],
+    ["Comilla ' ", "Delimita el inicio y el fin de un texto en SQL. Si el programa concatena, una comilla en la entrada puede cerrar la cadena antes de tiempo."],
+    ["Comentario --", "Desde <code>--</code> hasta el final de la línea, la base ignora el texto. Mal usado, permite anular el resto de la instrucción."],
+    ["WHERE siempre verdadero", "Una condición como <code>1=1</code> que se cumple en toda fila, de modo que el filtro deja de filtrar."],
+    ["Hash bcrypt", "Transformación de una contraseña en una cadena de la que no se puede recuperar la original. Se guarda el hash, nunca la clave."],
+    ["Privilegios mínimos", "Dar a cada usuario de la base solo los permisos que necesita (por ejemplo, solo <code>SELECT</code>), para limitar el daño posible."],
+    ["Trigger", "Procedimiento que la base ejecuta automáticamente ante un evento (INSERT, UPDATE, DELETE). Útil para auditar sin depender de la aplicación."],
+    ["Auditoría", "Registro de qué se cambió, quién y cuándo. No evita el ataque, pero permite detectarlo e investigarlo."]
+  ]
+};

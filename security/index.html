@@ -1,0 +1,1528 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta
+      name="description"
+      content="Inyección SQL paso a paso: cómo funciona, la defensa con consultas parametrizadas y la auditoría."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%226%22 fill=%22%232c8559%22/%3E%3Ctext x=%2216%22 y=%2222%22 font-size=%2216%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22monospace%22 font-weight=%22700%22%3EBD%3C/text%3E%3C/svg%3E"
+    />
+    <title>Inyección SQL Paso a Paso</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=JetBrains+Mono:wght@400;700&family=Source+Sans+3:wght@400;600;700&display=swap"
+    />
+    <link rel="stylesheet" href="../assets/css/curso.css" />
+    <style>
+      /* Layout: one centered column of "hojas" (sheets) with folder tabs on top; tables are the protagonists. */
+      :root {
+        --bg: #f3f6f4;
+        --surface: #ffffff;
+        --surface-2: #eef3f0;
+        --ink: #1b2827;
+        --muted: #5a6a67;
+        --line: #d3ddd9;
+        --accent: #2c8559;
+        --accent-ink: #ffffff;
+        --accent-soft: #dff1e7;
+        --ok: #2c8559;
+        --ok-soft: #e3f4ea;
+        --warn: #b86e08;
+        --warn-soft: #fdf0d9;
+        --bad: #cc3d3d;
+        --bad-soft: #fbe6e4;
+        --violet: #6b4fc7;
+        --violet-soft: #ece7fb;
+        --cur: #f6d87a;
+        --font-display:
+          "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+        --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+        --font-mono:
+          "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+        --radius: 10px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #121918;
+          --surface: #1a2423;
+          --surface-2: #213029;
+          --ink: #e3ebe8;
+          --muted: #9aaca7;
+          --line: #2f3d3b;
+          --accent: #5ccb92;
+          --accent-ink: #0f1a16;
+          --accent-soft: #1d3a2c;
+          --ok: #5ccb92;
+          --ok-soft: #1c352a;
+          --warn: #e6a640;
+          --warn-soft: #3a2c14;
+          --bad: #ff7a72;
+          --bad-soft: #3d2222;
+          --violet: #ac95ff;
+          --violet-soft: #2c2547;
+          --cur: #7a6420;
+          color-scheme: dark;
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #121918;
+        --surface: #1a2423;
+        --surface-2: #213029;
+        --ink: #e3ebe8;
+        --muted: #9aaca7;
+        --line: #2f3d3b;
+        --accent: #5ccb92;
+        --accent-ink: #0f1a16;
+        --accent-soft: #1d3a2c;
+        --ok: #5ccb92;
+        --ok-soft: #1c352a;
+        --warn: #e6a640;
+        --warn-soft: #3a2c14;
+        --bad: #ff7a72;
+        --bad-soft: #3d2222;
+        --violet: #ac95ff;
+        --violet-soft: #2c2547;
+        --cur: #7a6420;
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--font-body);
+        font-size: 16px;
+        line-height: 1.5;
+        padding-left: max(16px, env(safe-area-inset-left, 0px));
+        padding-right: max(16px, env(safe-area-inset-right, 0px));
+        padding-block: 28px 56px;
+      }
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      header.top {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .eyebrow {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      h1 {
+        font-family: var(--font-display);
+        font-size: clamp(28px, 4.4vw, 42px);
+        line-height: 1.08;
+        margin: 0;
+        text-wrap: balance;
+        letter-spacing: -0.01em;
+      }
+      h2 {
+        font-family: var(--font-display);
+        font-size: 22px;
+        margin: 0;
+        text-wrap: balance;
+      }
+      h3 {
+        font-family: var(--font-display);
+        font-size: 17px;
+        margin: 0;
+      }
+      .lede {
+        color: var(--muted);
+        max-width: 68ch;
+        margin: 0;
+      }
+      p {
+        margin: 0;
+      }
+      code,
+      .mono {
+        font-family: var(--font-mono);
+        font-size: 0.92em;
+      }
+
+      /* folder tabs */
+      .tabs {
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        padding-top: 4px;
+        scrollbar-width: thin;
+      }
+      .tab {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--line);
+        border-bottom: none;
+        background: var(--surface-2);
+        color: var(--muted);
+        padding: 9px 14px 8px;
+        border-radius: 10px 10px 0 0;
+        font: 600 15px var(--font-body);
+        cursor: pointer;
+      }
+      .tab .sym {
+        font-family: var(--font-mono);
+        font-size: 18px;
+        color: var(--accent);
+        line-height: 1;
+      }
+      .tab[aria-selected="true"] {
+        background: var(--surface);
+        color: var(--ink);
+        position: relative;
+        top: 1px;
+      }
+      .tab:focus-visible,
+      button:focus-visible,
+      select:focus-visible,
+      input:focus-visible,
+      label.chk:focus-within {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .sheet {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 0 var(--radius) var(--radius) var(--radius);
+        padding: 22px clamp(14px, 3vw, 28px) 26px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        margin-top: -1px;
+      }
+      .intro {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-width: 75ch;
+      }
+      .intro p {
+        color: var(--muted);
+      }
+
+      /* controls */
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 14px;
+        align-items: center;
+        background: var(--surface-2);
+        border-radius: var(--radius);
+        padding: 12px 14px;
+      }
+      .controls .label {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .ctl-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      select,
+      input[type="number"],
+      input[type="text"] {
+        font: 15px var(--font-mono);
+        color: var(--ink);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 6px 8px;
+        min-width: 0;
+      }
+      input[type="number"] {
+        width: 72px;
+      }
+      label.chk {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--font-mono);
+        font-size: 14px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        padding: 5px 9px;
+        border-radius: 7px;
+        cursor: pointer;
+      }
+      label.chk input {
+        accent-color: var(--accent);
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .chip {
+        font: 600 13px var(--font-body);
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--ink);
+        border-radius: 999px;
+        padding: 5px 11px;
+        cursor: pointer;
+      }
+      .chip:hover {
+        border-color: var(--accent);
+      }
+      button.btn {
+        font: 700 14px var(--font-body);
+        border-radius: 8px;
+        padding: 8px 14px;
+        cursor: pointer;
+        border: 1px solid var(--accent);
+        background: var(--surface);
+        color: var(--accent);
+      }
+      button.btn.primary {
+        background: var(--accent);
+        color: var(--accent-ink);
+      }
+      button.btn:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      .stepbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .stepcount {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        color: var(--muted);
+        margin-left: 4px;
+      }
+
+      /* relations */
+      .stage {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+        align-items: flex-start;
+      }
+      figure.rel {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+        max-width: 100%;
+      }
+      figure.rel figcaption {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 10px;
+        align-items: baseline;
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 15px;
+      }
+      figure.rel figcaption .meta {
+        font: 12px var(--font-mono);
+        color: var(--muted);
+        font-weight: 400;
+      }
+      figure.rel.is-result figcaption {
+        color: var(--accent);
+      }
+      .scroll {
+        overflow-x: auto;
+        max-width: 100%;
+      }
+      table.t {
+        border-collapse: separate;
+        border-spacing: 0;
+        font-family: var(--font-mono);
+        font-size: 13.5px;
+        font-variant-numeric: tabular-nums;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      table.t th {
+        background: var(--accent-soft);
+        color: var(--ink);
+        font-weight: 700;
+        text-align: left;
+        padding: 6px 10px;
+        border-bottom: 1px solid var(--line);
+        white-space: nowrap;
+      }
+      table.t th.pk {
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+      table.t td {
+        padding: 5px 10px;
+        border-bottom: 1px solid var(--line);
+        white-space: nowrap;
+      }
+      table.t tr:last-child td {
+        border-bottom: none;
+      }
+      table.t td.mark {
+        width: 1.5em;
+        text-align: center;
+        font-weight: 700;
+        padding: 5px 6px;
+      }
+      table.t th.mark {
+        padding: 6px;
+      }
+      table.t .hc {
+        background: var(--violet-soft);
+      }
+      table.t th.hc {
+        color: var(--violet);
+      }
+      tr.ok td {
+        background: var(--ok-soft);
+      }
+      tr.ok td.mark {
+        color: var(--ok);
+      }
+      tr.no td {
+        color: var(--muted);
+      }
+      tr.no td.mark {
+        color: var(--bad);
+      }
+      tr.dup td {
+        color: var(--bad);
+        text-decoration: line-through;
+        background: var(--bad-soft);
+      }
+      tr.dup td.mark {
+        text-decoration: none;
+      }
+      tr.cur td {
+        box-shadow:
+          inset 0 2px 0 var(--cur),
+          inset 0 -2px 0 var(--cur);
+      }
+      tr.cur td:first-child {
+        box-shadow:
+          inset 2px 2px 0 var(--cur),
+          inset 0 -2px 0 var(--cur);
+      }
+      tr.pend td {
+        color: var(--muted);
+        opacity: 0.55;
+      }
+      .empty-rel {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        color: var(--muted);
+        border: 1px dashed var(--line);
+        border-radius: 8px;
+        padding: 10px 14px;
+      }
+
+      /* narration & result */
+      .duo {
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+        gap: 18px;
+      }
+      @media (max-width: 760px) {
+        .duo {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+      .log {
+        background: var(--surface-2);
+        border-radius: var(--radius);
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-height: 120px;
+      }
+      .log h3 {
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        font-family: var(--font-body);
+      }
+      .log ol {
+        margin: 0;
+        padding-left: 30px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        max-height: 260px;
+        overflow-y: auto;
+      }
+      .log li {
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .log li:last-child {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .card {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-width: 0;
+      }
+      .card .k {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--muted);
+        font-weight: 700;
+      }
+      .expr {
+        font-family: "STIX Two Math", "Cambria Math", "Times New Roman", serif;
+        font-size: 22px;
+        line-height: 1.3;
+        overflow-x: auto;
+      }
+      .expr sub {
+        font-size: 0.62em;
+        font-family: var(--font-body);
+      }
+      pre.sql {
+        margin: 0;
+        font-family: var(--font-mono);
+        font-size: 13.5px;
+        background: var(--surface-2);
+        padding: 10px 12px;
+        border-radius: 8px;
+        overflow-x: auto;
+        white-space: pre;
+      }
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .stat {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 3px 10px;
+      }
+      .stat b {
+        color: var(--accent);
+      }
+      .note {
+        font-size: 14.5px;
+        color: var(--muted);
+        border-left: 3px solid var(--line);
+        padding-left: 10px;
+      }
+      .note.warn {
+        border-color: var(--warn);
+        color: var(--ink);
+      }
+      .note.bad {
+        border-color: var(--bad);
+        color: var(--ink);
+      }
+      .note.good {
+        border-color: var(--ok);
+        color: var(--ink);
+      }
+      .pill {
+        display: inline-block;
+        font: 700 12px var(--font-body);
+        border-radius: 999px;
+        padding: 2px 9px;
+        letter-spacing: 0.03em;
+      }
+      .pill.ok {
+        background: var(--ok-soft);
+        color: var(--ok);
+      }
+      .pill.warn {
+        background: var(--warn-soft);
+        color: var(--warn);
+      }
+      .pill.bad {
+        background: var(--bad-soft);
+        color: var(--bad);
+      }
+      .pill.violet {
+        background: var(--violet-soft);
+        color: var(--violet);
+      }
+      footer.foot {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      @media (prefers-reduced-motion: no-preference) {
+        .fade {
+          animation: fade 0.25s ease-out;
+        }
+        @keyframes fade {
+          from {
+            opacity: 0.35;
+            transform: translateY(3px);
+          }
+          to {
+            opacity: 1;
+            transform: none;
+          }
+        }
+      }
+
+      .track {
+        height: 6px;
+        border-radius: 3px;
+        background: var(--surface-2);
+        overflow: hidden;
+      }
+      .track > i {
+        display: block;
+        height: 100%;
+        background: var(--accent);
+        transition: width 0.25s ease;
+      }
+      .chips-steps {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .chips-steps button {
+        font: 700 13px var(--font-mono);
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--muted);
+        cursor: pointer;
+      }
+      .chips-steps button.seen {
+        color: var(--ink);
+      }
+      .chips-steps button.k-ataque.seen {
+        border-color: var(--bad);
+      }
+      .chips-steps button.k-defensa.seen {
+        border-color: var(--ok);
+      }
+      .chips-steps button[aria-current="true"] {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-ink);
+      }
+      .scene {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .scene h2 {
+        font-size: clamp(20px, 3vw, 25px);
+      }
+      .scene .rel {
+        max-width: 70ch;
+        color: var(--ink);
+      }
+      .scene .rel strong {
+        color: var(--accent);
+      }
+      .kind {
+        align-self: flex-start;
+      }
+      .pill.base {
+        background: var(--surface-2);
+        color: var(--muted);
+      }
+      .pill.normal,
+      .pill.defensa {
+        background: var(--ok-soft);
+        color: var(--ok);
+      }
+      .pill.ataque {
+        background: var(--bad-soft);
+        color: var(--bad);
+      }
+      .pill.auditoria {
+        background: var(--warn-soft);
+        color: var(--warn);
+      }
+      pre.sql {
+        margin: 0;
+        font-family: var(--font-mono);
+        font-size: 14px;
+        line-height: 1.7;
+        background: var(--dark, #10201a);
+        color: #eef3f0;
+        padding: 14px 16px;
+        border-radius: 10px;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      :root {
+        --dark: #122019;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --dark: #0c130f;
+        }
+      }
+      :root[data-theme="dark"] {
+        --dark: #0c130f;
+      }
+      pre.sql .dato {
+        background: #6a5214;
+        color: #ffe6a4;
+        border-radius: 4px;
+        padding: 1px 4px;
+        font-weight: 700;
+      }
+      pre.sql .cod {
+        background: #5e211e;
+        color: #ffb4ad;
+        border-radius: 4px;
+        padding: 1px 4px;
+        font-weight: 700;
+      }
+      pre.sql .com {
+        color: #8aa0ad;
+        text-decoration: line-through;
+      }
+      pre.sql .par {
+        background: #123d2d;
+        color: #8de2bb;
+        border-radius: 4px;
+        padding: 1px 4px;
+        font-weight: 700;
+      }
+      pre.sql .cm {
+        color: #8aa0ad;
+      }
+      .lbl {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--muted);
+        font-weight: 700;
+      }
+      .res {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+      .res .rh {
+        padding: 8px 12px;
+        font-weight: 700;
+        font-size: 14px;
+      }
+      .res.bueno .rh {
+        background: var(--ok-soft);
+        color: var(--ok);
+      }
+      .res.peligro .rh {
+        background: var(--bad-soft);
+        color: var(--bad);
+      }
+      .res.neutro .rh {
+        background: var(--warn-soft);
+        color: var(--warn);
+      }
+      .res .body {
+        padding: 10px 12px;
+        font-family: var(--font-mono);
+        font-size: 13px;
+        overflow-x: auto;
+      }
+      .res .vacio {
+        padding: 12px;
+        color: var(--muted);
+        font-style: italic;
+        font-size: 14px;
+      }
+      .res table.t {
+        border: none;
+        border-radius: 0;
+        width: 100%;
+      }
+      .legend-sql {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 14px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .legend-sql span {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .legend-sql b {
+        font: 700 12px var(--font-mono);
+        border-radius: 4px;
+        padding: 1px 6px;
+      }
+      .legend-sql .d {
+        background: #6a5214;
+        color: #ffe6a4;
+      }
+      .legend-sql .c {
+        background: #5e211e;
+        color: #ffb4ad;
+      }
+      .legend-sql .p {
+        background: #123d2d;
+        color: #8de2bb;
+      }
+      .legend-sql .x {
+        color: var(--muted);
+        text-decoration: line-through;
+      }
+      .lista {
+        margin: 0;
+        padding-left: 20px;
+        line-height: 1.7;
+      }
+      .lista li {
+        margin-bottom: 4px;
+      }
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        overflow: hidden;
+      }
+      .seg button {
+        font: 700 14px var(--font-body);
+        border: none;
+        background: var(--surface);
+        color: var(--muted);
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      .seg button[aria-pressed="true"] {
+        background: var(--accent);
+        color: var(--accent-ink);
+      }
+      .seg button + button {
+        border-left: 1px solid var(--line);
+      }
+      .fields {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+        flex: 1 1 260px;
+      }
+      .field label {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--muted);
+      }
+      .field input {
+        width: 100%;
+        font-size: 16px;
+        padding: 9px 10px;
+      }
+      .verdict {
+        font-size: 15.5px;
+      }
+      .verdict .tag {
+        font-weight: 700;
+      }
+      .verdict .tag.bad {
+        color: var(--bad);
+      }
+      .verdict .tag.ok {
+        color: var(--ok);
+      }
+      .gloss {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+        gap: 12px;
+      }
+      .gloss .card h3 {
+        font-size: 16px;
+      }
+      .gloss .card p {
+        color: var(--muted);
+        font-size: 15px;
+      }
+      code {
+        background: var(--surface-2);
+        border-radius: 4px;
+        padding: 0 4px;
+        font-family: var(--font-mono);
+        font-size: 0.92em;
+      }
+      kbd {
+        font: 12px var(--font-mono);
+        border: 1px solid var(--line);
+        border-bottom-width: 2px;
+        border-radius: 4px;
+        padding: 0 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <span class="eyebrow"
+          >2817 · Sistemas de Bases de Datos 1 · Material de apoyo</span
+        >
+        <h1>Inyección SQL, paso a paso</h1>
+        <p class="lede">
+          Cómo un texto escrito por el usuario puede convertirse en parte de la
+          instrucción SQL, cómo se evita con consultas parametrizadas y cómo la
+          auditoría deja rastro. Recorre la historia, prueba tus propios textos
+          en el simulador y repasa los términos en el glosario.
+        </p>
+      </header>
+
+      <div>
+        <div class="tabs" role="tablist" aria-label="Secciones">
+          <button
+            class="tab"
+            role="tab"
+            id="tab-recorrido"
+            data-tab="recorrido"
+          >
+            <span class="sym">1→9</span>Recorrido
+          </button>
+          <button
+            class="tab"
+            role="tab"
+            id="tab-simulador"
+            data-tab="simulador"
+          >
+            <span class="sym">'</span>Simulador
+          </button>
+          <button class="tab" role="tab" id="tab-glosario" data-tab="glosario">
+            <span class="sym">Aa</span>Glosario
+          </button>
+        </div>
+
+        <section
+          class="sheet"
+          id="p-recorrido"
+          role="tabpanel"
+          aria-labelledby="tab-recorrido"
+        >
+          <div class="track" aria-hidden="true"><i id="prog"></i></div>
+          <div class="chips-steps" id="pasos" aria-label="Pasos"></div>
+          <div class="scene" id="escena" aria-live="polite"></div>
+          <div class="stepbar">
+            <button class="btn" id="prev">◂ Anterior</button>
+            <button class="btn primary" id="next">Siguiente ▸</button>
+            <span class="stepcount" id="cuenta"></span>
+            <span class="stepcount">· teclas <kbd>←</kbd> <kbd>→</kbd></span>
+          </div>
+        </section>
+
+        <section
+          class="sheet"
+          id="p-simulador"
+          role="tabpanel"
+          aria-labelledby="tab-simulador"
+          hidden
+        >
+          <div class="intro">
+            <h2>Pruébalo tú: ¿dato o código?</h2>
+            <p>
+              Escribe lo que pondría un usuario, o lo que intentaría un
+              atacante, y mira cómo queda la consulta. Compara el programa que
+              <strong>concatena</strong> el texto con el que usa
+              <strong>parámetros</strong>. La base de datos es simulada: todo
+              ocurre dentro de esta página.
+            </p>
+          </div>
+          <div class="controls">
+            <span class="label">Pantalla</span>
+            <div class="seg" role="group" aria-label="Pantalla">
+              <button id="m-buscar" aria-pressed="true">
+                Buscador de lectores</button
+              ><button id="m-login" aria-pressed="false">
+                Inicio de sesión
+              </button>
+            </div>
+            <span class="label">Programa</span>
+            <div class="seg" role="group" aria-label="Programa">
+              <button id="w-concat" aria-pressed="true">
+                Concatena el texto</button
+              ><button id="w-param" aria-pressed="false">
+                Usa parámetros ($1)
+              </button>
+            </div>
+          </div>
+          <div class="fields">
+            <div class="field">
+              <label for="in-nombre" id="lbl-nombre">Nombre a buscar</label
+              ><input
+                type="text"
+                id="in-nombre"
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </div>
+            <div class="field" id="f-clave" hidden>
+              <label for="in-clave">Contraseña</label
+              ><input
+                type="text"
+                id="in-clave"
+                autocomplete="off"
+                spellcheck="false"
+                value="cualquiera"
+              />
+            </div>
+          </div>
+          <div class="controls">
+            <span class="label">Prueba con</span>
+            <div class="chips" id="presets"></div>
+          </div>
+          <div class="duo">
+            <div class="card">
+              <span class="k">Lo que recibe PostgreSQL</span>
+              <pre class="sql" id="sim-sql"></pre>
+              <div class="legend-sql">
+                <span><b class="d">texto</b> dato del usuario</span
+                ><span><b class="c">texto</b> se volvió código</span
+                ><span><b class="x">texto</b> comentado</span
+                ><span><b class="p">$1</b> parámetro</span>
+              </div>
+            </div>
+            <div class="card">
+              <span class="k">Lo que responde la base</span>
+              <div id="sim-res"></div>
+              <p class="verdict" id="sim-why"></p>
+            </div>
+          </div>
+          <figure class="rel">
+            <figcaption>
+              Tabla lector (simulada)<span class="meta"
+                >la contraseña real se muestra solo para que puedas probar el
+                inicio de sesión</span
+              >
+            </figcaption>
+            <div class="scroll" id="sim-tabla"></div>
+          </figure>
+        </section>
+
+        <section
+          class="sheet"
+          id="p-glosario"
+          role="tabpanel"
+          aria-labelledby="tab-glosario"
+          hidden
+        >
+          <div class="intro">
+            <h2>Glosario</h2>
+            <p>Los términos que aparecen en el recorrido, en pocas palabras.</p>
+          </div>
+          <div class="gloss" id="gloss"></div>
+        </section>
+      </div>
+
+      <nav
+        class="foot"
+        style="display: flex; flex-wrap: wrap; gap: 14px"
+        aria-label="Navegación del curso"
+      >
+        <a href="../" style="color: var(--accent); font-weight: 700"
+          >← Inicio del curso</a
+        ><a href="../algebra/" style="color: var(--accent); font-weight: 700"
+          >Álgebra relacional paso a paso</a
+        ><a
+          href="../normalizacion/"
+          style="color: var(--accent); font-weight: 700"
+          >Normalización paso a paso</a
+        >
+      </nav>
+      <footer class="foot">
+        Material de apoyo con fines educativos. Los ejemplos se ejecutan sobre
+        una base simulada dentro de la página. Prueba estas técnicas solo en
+        sistemas propios o para los que tengas autorización.
+      </footer>
+    </div>
+
+    <script src="sqli_data.js"></script>
+    <script>
+      (function () {
+        "use strict";
+        const $ = (s, r = document) => r.querySelector(s);
+        const esc = (v) =>
+          String(v).replace(
+            /[&<>"]/g,
+            (c) =>
+              ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+          );
+        const D = window.SQLI;
+
+        function tablaHTML(cols, filas) {
+          return (
+            '<table class="t"><thead><tr>' +
+            cols.map((c) => "<th>" + esc(c) + "</th>").join("") +
+            "</tr></thead><tbody>" +
+            filas
+              .map(
+                (f) =>
+                  "<tr>" +
+                  f.map((c) => "<td>" + esc(c) + "</td>").join("") +
+                  "</tr>",
+              )
+              .join("") +
+            "</tbody></table>"
+          );
+        }
+        function resHTML(r) {
+          let body;
+          if (r.tipo === "tabla")
+            body =
+              '<div class="scroll">' + tablaHTML(r.cols, r.filas) + "</div>";
+          else if (r.tipo === "json")
+            body = '<div class="body">' + esc(r.texto) + "</div>";
+          else body = '<div class="vacio">' + esc(r.texto) + "</div>";
+          return (
+            '<div class="res ' +
+            r.clase +
+            '"><div class="rh">' +
+            esc(r.cab) +
+            "</div>" +
+            body +
+            "</div>"
+          );
+        }
+
+        // ===================== RECORRIDO =====================
+        const S = D.pasos,
+          escena = $("#escena"),
+          pasosEl = $("#pasos");
+        let i = 0;
+        const vistos = new Set([0]);
+        S.forEach((s, n) => {
+          const b = document.createElement("button");
+          b.textContent = n + 1;
+          b.setAttribute("role", "tab");
+          b.className = "k-" + s.tipo;
+          b.addEventListener("click", () => ir(n));
+          pasosEl.appendChild(b);
+        });
+        function render() {
+          const s = S[i];
+          let h =
+            '<span class="pill kind ' +
+            s.tipo +
+            '">' +
+            esc(s.etq) +
+            "</span><h2>" +
+            esc(s.titulo) +
+            "</h2>";
+          h += '<p class="rel">' + s.rel + "</p>";
+          if (s.sql)
+            h +=
+              '<div><div class="lbl" style="margin-bottom:6px">Lo que recibe PostgreSQL</div><pre class="sql">' +
+              s.sql +
+              "</pre></div>";
+          if (s.res) h += resHTML(s.res);
+          if (s.lista)
+            h +=
+              '<ul class="lista">' +
+              s.lista.map((x) => "<li>" + x + "</li>").join("") +
+              "</ul>";
+          if (s.nota)
+            h +=
+              '<p class="note' +
+              (s.tipo === "ataque"
+                ? " bad"
+                : s.tipo === "defensa"
+                  ? " good"
+                  : " warn") +
+              '">' +
+              s.nota +
+              "</p>";
+          escena.innerHTML = h;
+          [...pasosEl.children].forEach((b, n) => {
+            b.setAttribute("aria-current", n === i ? "true" : "false");
+            b.classList.toggle("seen", vistos.has(n));
+          });
+          $("#prog").style.width = ((i + 1) / S.length) * 100 + "%";
+          $("#cuenta").textContent = i + 1 + " / " + S.length;
+          $("#prev").disabled = i === 0;
+          $("#next").textContent =
+            i === S.length - 1 ? "Reiniciar ↻" : "Siguiente ▸";
+        }
+        function ir(n) {
+          i = (n + S.length) % S.length;
+          vistos.add(i);
+          render();
+        }
+        $("#prev").addEventListener("click", () => ir(i - 1));
+        $("#next").addEventListener("click", () =>
+          i === S.length - 1 ? ir(0) : ir(i + 1),
+        );
+        document.addEventListener("keydown", (e) => {
+          if (!$("#p-recorrido").hidden) {
+            if (e.key === "ArrowRight") ir(i + 1);
+            if (e.key === "ArrowLeft") ir(i - 1);
+          }
+        });
+        render();
+
+        // ===================== SIMULADOR =====================
+        const LECTORES = D.tabla.filas.map((f) => ({
+          id: f[0],
+          nombre: f[1],
+          clave: f[3],
+        }));
+        let modo = "buscar",
+          prog = "concat";
+        const inN = $("#in-nombre"),
+          inC = $("#in-clave");
+        inN.value = "Ana López";
+        const PRESETS = {
+          buscar: [
+            ["Nombre normal", "Ana López"],
+            ["Cerrar la comilla", "' OR 1=1"],
+            ["Nombre que no existe", "Zoraida"],
+          ],
+          login: [
+            ["Clave correcta", "Ana López", "leer2026"],
+            ["Clave incorrecta", "Ana López", "1234"],
+            ["Comentar la clave", "Ana López' --", "lo que sea"],
+          ],
+        };
+        function renderPresets() {
+          $("#presets").innerHTML = PRESETS[modo]
+            .map(
+              (p, k) =>
+                '<button class="chip" data-k="' +
+                k +
+                '">' +
+                esc(p[0]) +
+                "</button>",
+            )
+            .join("");
+          $("#presets")
+            .querySelectorAll("button")
+            .forEach((b) =>
+              b.addEventListener("click", () => {
+                const p = PRESETS[modo][Number(b.dataset.k)];
+                inN.value = p[1];
+                if (p[2] !== undefined) inC.value = p[2];
+                run();
+              }),
+            );
+        }
+        function hl(txt, cls) {
+          return '<span class="' + cls + '">' + esc(txt) + "</span>";
+        }
+        // Simulación: detecta si el texto "rompe" la cadena (comilla sin escapar) al concatenar.
+        function analiza() {
+          const nombre = inN.value,
+            clave = inC.value;
+          const rompe = nombre.indexOf("'") !== -1;
+          const comenta =
+            /'(\s|).*--/.test(nombre) || nombre.indexOf("--") !== -1;
+          let sql, res, why;
+          if (modo === "buscar") {
+            if (prog === "param") {
+              sql =
+                "SELECT id, nombre FROM lector WHERE nombre = " +
+                hl("$1", "par") +
+                "\n" +
+                '<span class="cm">-- $1 = ' +
+                esc(JSON.stringify(nombre)) +
+                "</span>";
+              const hit = LECTORES.filter((l) => l.nombre === nombre);
+              res = hit.length
+                ? {
+                    clase: "bueno",
+                    cab: hit.length + " fila — búsqueda literal",
+                    tipo: "tabla",
+                    cols: ["id", "nombre"],
+                    filas: hit.map((l) => [l.id, l.nombre]),
+                  }
+                : {
+                    clase: "bueno",
+                    cab: "0 filas",
+                    tipo: "vacio",
+                    texto:
+                      "La base buscó el nombre exacto " +
+                      JSON.stringify(nombre) +
+                      ". No existe ningún lector así, y el texto nunca se interpretó como código.",
+                  };
+              why =
+                '<span class="tag ok">Seguro.</span> El texto viaja como parámetro: aunque traiga comillas, es solo un nombre.';
+            } else {
+              // concatenado
+              if (rompe) {
+                sql =
+                  "SELECT id, nombre FROM lector\nWHERE nombre = '" +
+                  hl(nombre, "cod") +
+                  "'";
+                const siempre = /or\s+1=1|or\s+'1'='1'|or\s+''=''/i.test(
+                  nombre.replace(/\s+/g, " "),
+                );
+                if (siempre) {
+                  res = {
+                    clase: "peligro",
+                    cab: LECTORES.length + " filas — se filtró toda la tabla",
+                    tipo: "tabla",
+                    cols: ["id", "nombre"],
+                    filas: LECTORES.map((l) => [l.id, l.nombre]),
+                  };
+                  why =
+                    '<span class="tag bad">Inyección.</span> La comilla cerró la cadena y la condición siempre verdadera anuló el filtro.';
+                } else {
+                  res = {
+                    clase: "peligro",
+                    cab: "SQL alterado por el usuario",
+                    tipo: "vacio",
+                    texto:
+                      "La comilla cerró la cadena antes de tiempo. Según lo que siguiera, la base ejecutaría ese texto como instrucción (o daría un error de sintaxis).",
+                  };
+                  why =
+                    '<span class="tag bad">Peligro.</span> La entrada rompió la cadena: el dato ya es parte de la instrucción.';
+                }
+              } else {
+                sql =
+                  "SELECT id, nombre FROM lector\nWHERE nombre = '" +
+                  hl(nombre, "dato") +
+                  "'";
+                const hit = LECTORES.filter((l) => l.nombre === nombre);
+                res = hit.length
+                  ? {
+                      clase: "bueno",
+                      cab: hit.length + " fila — correcto",
+                      tipo: "tabla",
+                      cols: ["id", "nombre"],
+                      filas: hit.map((l) => [l.id, l.nombre]),
+                    }
+                  : {
+                      clase: "neutro",
+                      cab: "0 filas",
+                      tipo: "vacio",
+                      texto:
+                        "No hay ningún lector con ese nombre, pero la consulta funcionó con normalidad.",
+                    };
+                why =
+                  '<span class="tag ok">Sin comillas, sin problema.</span> Un nombre normal se comporta como dato aunque se concatene. Por eso el riesgo pasa desapercibido.';
+              }
+            }
+          } else {
+            // login
+            if (prog === "param") {
+              sql =
+                "SELECT id FROM lector\nWHERE nombre = " +
+                hl("$1", "par") +
+                " AND clave = crypt(" +
+                hl("$2", "par") +
+                ", clave)\n" +
+                '<span class="cm">-- $1 = ' +
+                esc(JSON.stringify(nombre)) +
+                "   $2 = " +
+                esc(JSON.stringify(clave)) +
+                "</span>";
+              const l = LECTORES.find(
+                (x) => x.nombre === nombre && x.clave === clave,
+              );
+              res = {
+                clase: l ? "bueno" : "bueno",
+                cab: l ? "acceso concedido" : "acceso denegado",
+                tipo: "json",
+                texto: l
+                  ? '{ "acceso": true, "lector": { "id": ' + l.id + " } }"
+                  : '{ "acceso": false, "lector": null }',
+              };
+              why = l
+                ? '<span class="tag ok">Correcto.</span> Nombre y contraseña coinciden.'
+                : '<span class="tag ok">Rechazado.</span> El nombre se trató completo (comillas y <code>--</code> incluidos): no hay truco posible.';
+            } else {
+              if (comenta && rompe) {
+                const nombreReal = nombre.split("'")[0];
+                const l = LECTORES.find((x) => x.nombre === nombreReal);
+                sql =
+                  "SELECT id FROM lector\nWHERE nombre = '" +
+                  hl(nombreReal + "' --", "cod") +
+                  hl(" ' AND clave = crypt('" + clave + "', clave)", "com");
+                res = l
+                  ? {
+                      clase: "peligro",
+                      cab: "acceso concedido sin la contraseña",
+                      tipo: "json",
+                      texto:
+                        '{ "acceso": true, "lector": { "id": ' +
+                        l.id +
+                        ', "nombre": ' +
+                        JSON.stringify(l.nombre) +
+                        " } }",
+                    }
+                  : {
+                      clase: "peligro",
+                      cab: "instrucción alterada",
+                      tipo: "vacio",
+                      texto:
+                        "El -- comentó la comprobación de la clave. Como no hay un lector llamado " +
+                        JSON.stringify(nombreReal) +
+                        ", aquí no entró, pero el control de contraseña ya fue anulado.",
+                    };
+                why =
+                  '<span class="tag bad">Inyección.</span> El <code>--</code> comentó la verificación de la contraseña.';
+              } else if (rompe) {
+                sql =
+                  "SELECT id FROM lector\nWHERE nombre = '" +
+                  hl(nombre, "cod") +
+                  "' AND clave = crypt('" +
+                  esc(clave) +
+                  "', clave)";
+                res = {
+                  clase: "peligro",
+                  cab: "SQL alterado por el usuario",
+                  tipo: "vacio",
+                  texto:
+                    "La comilla rompió la cadena del nombre. La instrucción quedó malformada o a merced de lo que siga.",
+                };
+                why =
+                  '<span class="tag bad">Peligro.</span> La entrada rompió la cadena.';
+              } else {
+                sql =
+                  "SELECT id FROM lector\nWHERE nombre = '" +
+                  hl(nombre, "dato") +
+                  "' AND clave = crypt('" +
+                  hl(clave, "dato") +
+                  "', clave)";
+                const l = LECTORES.find(
+                  (x) => x.nombre === nombre && x.clave === clave,
+                );
+                res = {
+                  clase: l ? "bueno" : "neutro",
+                  cab: l ? "acceso concedido" : "acceso denegado",
+                  tipo: "json",
+                  texto: l
+                    ? '{ "acceso": true, "lector": { "id": ' + l.id + " } }"
+                    : '{ "acceso": false, "lector": null }',
+                };
+                why = l
+                  ? '<span class="tag ok">Correcto.</span> Nombre y contraseña coinciden.'
+                  : '<span class="tag ok">Rechazado.</span> La contraseña no coincide.';
+              }
+            }
+          }
+          return { sql, res, why };
+        }
+        function run() {
+          const o = analiza();
+          $("#sim-sql").innerHTML = o.sql;
+          $("#sim-res").innerHTML = resHTML(o.res);
+          $("#sim-why").innerHTML = o.why;
+        }
+        function setModo(m) {
+          modo = m;
+          $("#m-buscar").setAttribute("aria-pressed", m === "buscar");
+          $("#m-login").setAttribute("aria-pressed", m === "login");
+          $("#f-clave").hidden = m !== "login";
+          $("#lbl-nombre").textContent =
+            m === "login" ? "Usuario (nombre)" : "Nombre a buscar";
+          renderPresets();
+          run();
+        }
+        function setProg(p) {
+          prog = p;
+          $("#w-concat").setAttribute("aria-pressed", p === "concat");
+          $("#w-param").setAttribute("aria-pressed", p === "param");
+          run();
+        }
+        $("#m-buscar").addEventListener("click", () => setModo("buscar"));
+        $("#m-login").addEventListener("click", () => setModo("login"));
+        $("#w-concat").addEventListener("click", () => setProg("concat"));
+        $("#w-param").addEventListener("click", () => setProg("param"));
+        inN.addEventListener("input", run);
+        inC.addEventListener("input", run);
+        $("#sim-tabla").innerHTML = tablaHTML(
+          ["id", "nombre", "clave (hash bcrypt)", "clave real (demo)"],
+          D.tabla.filas,
+        );
+        renderPresets();
+        run();
+
+        // ===================== GLOSARIO =====================
+        $("#gloss").innerHTML = D.glosario
+          .map(
+            ([t, d]) =>
+              '<div class="card"><h3>' + esc(t) + "</h3><p>" + d + "</p></div>",
+          )
+          .join("");
+
+        // ===================== TABS =====================
+        const TABS = ["recorrido", "simulador", "glosario"];
+        function show(t) {
+          if (!TABS.includes(t)) t = "recorrido";
+          TABS.forEach((x) => {
+            $("#p-" + x).hidden = x !== t;
+            $("#tab-" + x).setAttribute(
+              "aria-selected",
+              x === t ? "true" : "false",
+            );
+          });
+          try {
+            localStorage.setItem("sqli-tab", t);
+          } catch (e) {}
+        }
+        document
+          .querySelectorAll(".tab")
+          .forEach((b) =>
+            b.addEventListener("click", () => show(b.dataset.tab)),
+          );
+        window.addEventListener("hashchange", () => {
+          const t = location.hash.slice(1);
+          if (TABS.includes(t)) show(t);
+        });
+        let start = (location.hash || "").slice(1);
+        if (!TABS.includes(start)) {
+          try {
+            start = localStorage.getItem("sqli-tab") || "recorrido";
+          } catch (e) {
+            start = "recorrido";
+          }
+        }
+        show(start);
+      })();
+    </script>
+  </body>
+</html>
