@@ -9,7 +9,8 @@ Sitio publicado: https://bryangmz.github.io/database-systems-1/
 | Herramienta                     | Unidad | Carpeta          | Enlace                                                     |
 | ------------------------------- | ------ | ---------------- | ---------------------------------------------------------- |
 | Álgebra relacional, paso a paso | 8      | `algebra/`       | https://bryangmz.github.io/database-systems-1/algebra/       |
-| Normalización, paso a paso      | 9      | `normalizacion/` | https://bryangmz.github.io/database-systems-1/normalizacion/ |
+| Normalización, paso a paso      | 9      | `normalization/` | https://bryangmz.github.io/database-systems-1/normalization/ |
+| Inyección SQL, paso a paso      | Lab    | `seguridad/`     | https://bryangmz.github.io/database-systems-1/seguridad/     |
 
 Cada herramienta tiene pestañas con su propio enlace, por ejemplo `algebra/#division` o `normalizacion/#pedido`.
 
@@ -20,6 +21,7 @@ index.html                portada con las tarjetas de cada herramienta
 assets/css/curso.css      estilos compartidos (colores, tipografía, tablas)
 algebra/index.html        Álgebra relacional paso a paso
 normalization/index.html  Normalización paso a paso
+seguridad/index.html      Inyección SQL paso a paso
 .nojekyll                 indica a GitHub Pages que publique los archivos tal cual
 ```
 

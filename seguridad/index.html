@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Inyección SQL paso a paso: cómo funciona el ataque, la defensa con consultas parametrizadas y la auditoría con triggers." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%226%22 fill=%22%232c8559%22/%3E%3Ctext x=%2216%22 y=%2222%22 font-size=%2216%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22monospace%22 font-weight=%22700%22%3EBD%3C/text%3E%3C/svg%3E" />
+    <title>Inyección SQL paso a paso</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" />
+    <style>
+/* Layout: recorrido guiado — cabecera fija con progreso, una "escena" por paso
+   (relato + SQL + lo que responde la base), y navegación anterior/siguiente. */
+:root {
+  --bg: #eef2f6;
+  --panel: #ffffff;
+  --ink: #16212c;
+  --muted: #586776;
+  --line: #d4dde5;
+  --accent: #1f4fa8;
+  --accent-ink: #ffffff;
+  --code-bg: #0f1b26;
+  --code-ink: #e7eef6;
+  --dato-bg: #ffd873; --dato-fg: #4a3100;
+  --rojo-bg: #f6c6c1; --rojo-fg: #9a1f1a;
+  --ok: #17694a; --ok-bg: #d8f1e5;
+  --mal: #b02520; --mal-bg: #fbe1df;
+  --aviso: #7a5406; --aviso-bg: #fdeec4;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e151c; --panel: #18222d; --ink: #e6edf3; --muted: #9aabb9; --line: #2a3948;
+  --accent: #7aa7ff; --accent-ink: #0b1420; --code-bg: #0a141d; --code-ink: #e7eef6;
+  --dato-bg: #6a5214; --dato-fg: #ffe6a4; --rojo-bg: #5e211e; --rojo-fg: #ffb4ad;
+  --ok: #8de2bb; --ok-bg: #123d2d; --mal: #ffaaa4; --mal-bg: #4a1a19;
+  --aviso: #f3d48a; --aviso-bg: #3c2f10; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e151c; --panel: #18222d; --ink: #e6edf3; --muted: #9aabb9; --line: #2a3948;
+  --accent: #7aa7ff; --accent-ink: #0b1420; --code-bg: #0a141d; --code-ink: #e7eef6;
+  --dato-bg: #6a5214; --dato-fg: #ffe6a4; --rojo-bg: #5e211e; --rojo-fg: #ffb4ad;
+  --ok: #8de2bb; --ok-bg: #123d2d; --mal: #ffaaa4; --mal-bg: #4a1a19;
+  --aviso: #f3d48a; --aviso-bg: #3c2f10; color-scheme: dark }
+
+* { box-sizing: border-box }
+html, body { margin: 0 }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 20; background: var(--panel) }
+
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel); border-bottom: 1px solid var(--line);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 12px }
+.bar .in { max-width: 920px; margin: 0 auto; display: flex; align-items: center; gap: 14px; flex-wrap: wrap }
+.bar .et { font: 700 .72rem/1 var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted) }
+.bar h1 { font-family: var(--display); font-size: 1.02rem; margin: 0; flex: 1; min-width: 0 }
+.track { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; width: 100%; margin-top: 4px }
+.track > i { display: block; height: 100%; background: var(--accent); transition: width .3s ease }
+
+.wrap { max-width: 920px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 22px 120px }
+
+.pasos { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px }
+.pasos button { border: 1px solid var(--line); background: var(--panel); color: var(--muted); font: 700 .82rem var(--mono);
+  width: 36px; height: 36px; border-radius: 9px; cursor: pointer }
+.pasos button[aria-current="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink) }
+.pasos button.visto { color: var(--ink) }
+
+.escena { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden }
+.escena .cab { padding: 20px 22px 0;
+}
+.escena .tipo { display: inline-flex; align-items: center; gap: 7px; font: 700 .74rem/1 var(--body); letter-spacing: .07em; text-transform: uppercase; padding: 6px 11px; border-radius: 99px; margin-bottom: 12px }
+.tipo.base { background: var(--line); color: var(--muted) }
+.tipo.normal { background: var(--ok-bg); color: var(--ok) }
+.tipo.ataque { background: var(--mal-bg); color: var(--mal) }
+.tipo.defensa { background: var(--ok-bg); color: var(--ok) }
+.tipo.auditoria { background: var(--aviso-bg); color: var(--aviso) }
+.escena h2 { font-family: var(--display); font-size: clamp(1.3rem, 3.4vw, 1.7rem); line-height: 1.15; margin: 0 0 10px }
+.escena .rel { color: var(--ink); margin: 0 22px; max-width: 64ch }
+.escena .rel strong { color: var(--accent) }
+
+.bloque { margin: 18px 22px 0 }
+.bloque .lbl { font: 700 .72rem/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; display: flex; align-items: center; gap: 8px }
+pre.sql { background: var(--code-bg); color: var(--code-ink); font: 600 .86rem/1.7 var(--mono); padding: 15px 16px; border-radius: 11px; margin: 0; overflow-x: auto; white-space: pre-wrap; word-break: break-word }
+.sql .dato { background: var(--dato-bg); color: var(--dato-fg); border-radius: 4px; padding: 1px 4px; font-weight: 700 }
+.sql .mal { background: var(--rojo-bg); color: var(--rojo-fg); border-radius: 4px; padding: 1px 4px; font-weight: 700 }
+.sql .cm { color: #7fa9c9 }
+
+.res { margin: 16px 22px 22px; border: 1px solid var(--line); border-radius: 11px; overflow: hidden }
+.res .rh { padding: 9px 14px; font: 700 .8rem var(--body); display: flex; align-items: center; gap: 8px }
+.res.bueno .rh { background: var(--ok-bg); color: var(--ok) }
+.res.peligro .rh { background: var(--mal-bg); color: var(--mal) }
+.res.neutro .rh { background: var(--aviso-bg); color: var(--aviso) }
+table { border-collapse: collapse; width: 100%; font-size: .86rem }
+table th, table td { text-align: left; padding: 8px 14px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums }
+table th { font: 700 .74rem var(--body); text-transform: uppercase; letter-spacing: .05em; color: var(--muted) }
+table td.mono, table td .h { font-family: var(--mono); font-size: .8rem; word-break: break-all }
+.vacio { padding: 16px 14px; color: var(--muted); font-style: italic }
+.nota { margin: 0 22px 22px; background: var(--aviso-bg); color: var(--aviso); border-radius: 10px; padding: 12px 14px; font-size: .9rem }
+.nota b { color: var(--aviso) }
+
+.nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; background: var(--panel); border-top: 1px solid var(--line);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-top: 12px; padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)) }
+.nav .in { max-width: 920px; margin: 0 auto; display: flex; gap: 12px; align-items: center }
+.btn { border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: 600 1rem var(--body); padding: 12px 20px; min-height: 48px; border-radius: 12px; cursor: pointer }
+.btn.primario { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); flex: 1; justify-content: center; display: inline-flex; align-items: center; gap: 8px }
+.btn:disabled { opacity: .4; cursor: default }
+.btn:focus-visible, .pasos button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px }
+.cuenta { font: 600 .9rem var(--mono); color: var(--muted); white-space: nowrap }
+@media (max-width: 480px) { .btn.anterior .txt { display: none } .escena h2 { font-size: 1.3rem } }
+</style>
+  </head>
+  <body>
+<div class="bar">
+  <div class="in">
+    <a class="et" href="../" style="color:var(--accent);text-decoration:none">← Herramientas</a>
+    <h1>Inyección SQL, paso a paso</h1>
+    <div class="track"><i id="prog"></i></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="pasos" id="pasos" role="tablist" aria-label="Pasos"></div>
+  <div class="escena" id="escena" aria-live="polite"></div>
+</div>
+
+<div class="nav">
+  <div class="in">
+    <button class="btn anterior" id="prev">◂ <span class="txt">Anterior</span></button>
+    <button class="btn primario" id="next">Siguiente ▸</button>
+    <span class="cuenta" id="cuenta"></span>
+  </div>
+</div>
+
+<script>
+const S = [
+  {
+    tipo:"base", etq:"Punto de partida",
+    titulo:"La base de datos de la biblioteca",
+    relato:"Tenemos una tabla <strong>lector</strong> con el nombre y la contraseña guardada como <em>hash</em> bcrypt. Una aplicación web deja buscar lectores por su nombre. Vamos a ver qué pasa según cómo el programa arme esa consulta.",
+    res:{ clase:"neutro", cab:"Tabla lector", tipo:"tabla",
+      cols:["id","nombre","clave (hash bcrypt)"],
+      filas:[["1","Ana López","$2a$06$zbvPJua…SySdHFq0K"],["2","Luis Pérez","$2a$06$W1To8I5…GAlX.Kc2"],["3","María García","$2a$06$O5ML9IU…6ky/fMAq"]] }
+  },
+  {
+    tipo:"normal", etq:"Uso normal",
+    titulo:"Una búsqueda común y corriente",
+    relato:"El usuario escribe <strong>Ana López</strong> en el buscador. El programa arma el SQL pegando ese texto entre comillas. Como el dato es un nombre normal, todo funciona bien.",
+    sql:`SELECT id, nombre FROM lector\nWHERE nombre = '<span class="dato">Ana López</span>'`,
+    res:{ clase:"bueno", cab:"1 fila — correcto", tipo:"tabla",
+      cols:["id","nombre"], filas:[["1","Ana López"]] }
+  },
+  {
+    tipo:"ataque", etq:"Ataque 1",
+    titulo:"El truco: cerrar la comilla",
+    relato:"Ahora el atacante no escribe un nombre: escribe <strong>' OR '1'='1</strong>. Su comilla cierra la del programa, y lo que sigue deja de ser un dato y se vuelve <em>parte de la instrucción</em>. La base ya no puede distinguir el dato del código.",
+    sql:`SELECT id, nombre FROM lector\nWHERE nombre = '<span class="mal">' OR '1'='1</span>'`,
+    res:{ clase:"peligro", cab:"3 filas — se filtró toda la tabla", tipo:"tabla",
+      cols:["id","nombre"], filas:[["1","Ana López"],["2","Luis Pérez"],["3","María García"]] },
+    nota:"<b>¿Por qué?</b> La condición <code>'1'='1'</code> siempre es verdadera, así que el <code>WHERE</code> deja pasar todas las filas."
+  },
+  {
+    tipo:"ataque", etq:"Ataque 2",
+    titulo:"Robar datos de otra columna con UNION",
+    relato:"Con la misma técnica, el atacante pega un <strong>UNION SELECT</strong> para que la consulta devuelva, además, columnas que no debería ver: las contraseñas. El <strong>--</strong> del final convierte en comentario todo lo que venía después.",
+    sql:`SELECT id, nombre FROM lector\nWHERE nombre = '<span class="mal">' UNION SELECT id, clave FROM lector --</span>'`,
+    res:{ clase:"peligro", cab:"Expuso los hashes de las contraseñas", tipo:"tabla",
+      cols:["id","nombre"], filas:[["1","$2a$06$zbvPJua…SySdHFq0K"],["2","$2a$06$W1To8I5…GAlX.Kc2"],["3","$2a$06$O5ML9IU…6ky/fMAq"]] },
+    nota:"<b>Detalle:</b> <code>UNION</code> pega el resultado de una segunda consulta. Si las claves estuvieran en texto plano, aquí se verían directamente."
+  },
+  {
+    tipo:"ataque", etq:"Ataque 3",
+    titulo:"Entrar sin contraseña",
+    relato:"En un login, el atacante escribe como usuario <strong>Ana López' --</strong>. El <strong>--</strong> comenta la parte que verificaba la contraseña, así que la base solo comprueba el nombre y da acceso.",
+    sql:`SELECT id FROM lector\nWHERE nombre = '<span class="mal">Ana López' --</span>' AND clave = crypt('<span class="cm">clave</span>', clave)`,
+    res:{ clase:"peligro", cab:"acceso: true — entró sin saber la clave", tipo:"json",
+      texto:'{ "acceso": true, "lector": { "id": 1, "nombre": "Ana López" } }' },
+    nota:"Todo lo que va tras <code>--</code> queda ignorado: la comprobación de <code>clave</code> nunca se ejecuta."
+  },
+  {
+    tipo:"defensa", etq:"La defensa",
+    titulo:"Consultas parametrizadas",
+    relato:"La solución: no pegar el texto dentro del SQL. El valor viaja <strong>aparte</strong>, en el parámetro <strong>$1</strong>. La base recibe por un lado la instrucción y por otro el dato, y nunca interpreta el dato como código.",
+    sql:`SELECT id, nombre FROM lector WHERE nombre = $1\n<span class="cm">-- PARAMETERS: ["' OR '1'='1"]</span>`,
+    res:{ clase:"bueno", cab:"0 filas — el ataque ya no funciona", tipo:"vacio",
+      texto:"La base buscó, literalmente, a un lector que se llamara  ' OR '1'='1  — y no existe." },
+    nota:"<b>Regla de oro:</b> el repositorio y el QueryBuilder de TypeORM ya parametrizan por ti. El peligro aparece solo cuando se concatena texto a mano."
+  },
+  {
+    tipo:"defensa", etq:"La defensa",
+    titulo:"El login seguro rechaza el truco",
+    relato:"El mismo login, pero parametrizado. El nombre <strong>Ana López' --</strong> se trata como un nombre completo (comillas y guiones incluidos). No existe ningún lector con ese nombre, así que no hay acceso.",
+    sql:`SELECT id FROM lector\nWHERE nombre = $1 AND clave = crypt($2, clave)\n<span class="cm">-- PARAMETERS: ["Ana López' --", "clave"]</span>`,
+    res:{ clase:"bueno", cab:"acceso: false — rechazado", tipo:"json",
+      texto:'{ "acceso": false, "lector": null }' }
+  },
+  {
+    tipo:"auditoria", etq:"Auditoría",
+    titulo:"Dejar rastro de lo que pasó",
+    relato:"Aunque un ataque logre modificar datos, la <strong>auditoría</strong> deja constancia. Un <em>trigger</em> sobre la tabla guarda en una bitácora quién cambió qué y cuándo, con el valor anterior y el nuevo. El trigger se ejecuta solo: la aplicación no puede olvidarse de auditar.",
+    sql:`SELECT operacion, usuario, fecha, antes, despues\nFROM auditoria ORDER BY id DESC;`,
+    res:{ clase:"neutro", cab:"La bitácora registró el cambio", tipo:"tabla",
+      cols:["operacion","usuario","antes → despues"],
+      filas:[["UPDATE","postgres","existencias: 2 → 7"],["UPDATE","postgres","existencias: 1 → 0"]] },
+    nota:"<b>Punto clave:</b> el usuario es <code>postgres</code>, el superusuario. Si la app se conectara con un usuario con solo <code>SELECT</code>, varios de estos ataques habrían fallado (privilegios mínimos)."
+  },
+  {
+    tipo:"base", etq:"Cierre",
+    titulo:"Lo que hay que recordar",
+    relato:"La seguridad no es un módulo aparte: se decide en <strong>cada consulta</strong> que escribes.",
+    lista:[
+      "La inyección ocurre al <b>concatenar</b> datos del usuario dentro del SQL.",
+      "La defensa principal son las <b>consultas parametrizadas</b> (<code>$1</code>): el dato viaja separado del código.",
+      "Suma capas: <b>validar la entrada</b>, <b>privilegios mínimos</b>, contraseñas con <b>bcrypt</b> y <b>auditoría</b>.",
+      "Regla de oro: <b>nunca</b> pegues texto del usuario dentro de una instrucción SQL."
+    ]
+  }
+];
+
+const esc = document.getElementById('escena');
+const pasosEl = document.getElementById('pasos');
+const prog = document.getElementById('prog');
+const cuenta = document.getElementById('cuenta');
+const bPrev = document.getElementById('prev');
+const bNext = document.getElementById('next');
+let i = 0;
+const vistos = new Set([0]);
+
+S.forEach((_, n) => {
+  const b = document.createElement('button');
+  b.textContent = n + 1; b.setAttribute('role','tab');
+  b.addEventListener('click', () => ir(n));
+  pasosEl.appendChild(b);
+});
+
+function tablaHTML(r){
+  let h = '<table><thead><tr>' + r.cols.map(c=>`<th>${c}</th>`).join('') + '</tr></thead><tbody>';
+  h += r.filas.map(f=>'<tr>'+f.map(c=>`<td class="${/\$2a|…|→/.test(c)?'mono':''}">${c}</td>`).join('')+'</tr>').join('');
+  return h + '</tbody></table>';
+}
+function resHTML(r){
+  let cuerpo;
+  if(r.tipo==='tabla') cuerpo = tablaHTML(r);
+  else if(r.tipo==='json') cuerpo = `<pre class="sql" style="background:transparent;color:inherit;padding:14px">${r.texto}</pre>`;
+  else cuerpo = `<div class="vacio">${r.texto}</div>`;
+  return `<div class="res ${r.clase}"><div class="rh">${r.cab}</div>${cuerpo}</div>`;
+}
+function render(){
+  const s = S[i];
+  let html = `<div class="cab"><span class="tipo ${s.tipo}">${s.etq}</span><h2>${s.titulo}</h2></div>`;
+  html += `<p class="rel">${s.relato}</p>`;
+  if(s.sql) html += `<div class="bloque"><div class="lbl">Lo que recibe PostgreSQL</div><pre class="sql">${s.sql}</pre></div>`;
+  if(s.res) html += resHTML(s.res);
+  if(s.lista) html += '<div class="bloque"><ul style="margin:4px 0 20px;padding-left:20px;line-height:1.7">'+s.lista.map(x=>`<li>${x}</li>`).join('')+'</ul></div>';
+  if(s.nota) html += `<div class="nota">${s.nota}</div>`;
+  esc.innerHTML = html;
+  esc.scrollIntoView({block:'nearest'});
+  [...pasosEl.children].forEach((b,n)=>{ b.setAttribute('aria-current', n===i?'true':'false'); b.classList.toggle('visto', vistos.has(n)); });
+  prog.style.width = ((i+1)/S.length*100)+'%';
+  cuenta.textContent = `${i+1} / ${S.length}`;
+  bPrev.disabled = i===0;
+  bNext.textContent = i===S.length-1 ? 'Reiniciar ↻' : 'Siguiente ▸';
+}
+function ir(n){ i = (n+S.length)%S.length; vistos.add(i); render(); }
+bPrev.addEventListener('click', ()=>ir(i-1));
+bNext.addEventListener('click', ()=> i===S.length-1 ? ir(0) : ir(i+1));
+document.addEventListener('keydown', e=>{ if(e.key==='ArrowRight') ir(i+1); if(e.key==='ArrowLeft') ir(i-1); });
+render();
+</script>
+  </body>
+</html>
